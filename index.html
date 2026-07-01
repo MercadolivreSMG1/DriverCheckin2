@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#FFE600" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Check-in Pátio" />
+<title>Check-in de Pátio · Mercado Livre</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNGRkU2MDAiLz48cmVjdCB4PSI5IiB5PSIyNSIgd2lkdGg9IjI2IiBoZWlnaHQ9IjE2IiByeD0iMiIgZmlsbD0iIzM0ODNGQSIvPjxwYXRoIGQ9Ik0zNSAyOWg4LjVsNi41IDd2NUgzNXoiIGZpbGw9IiNGRjc3MzMiLz48Y2lyY2xlIGN4PSIyMCIgY3k9IjQ0IiByPSI1IiBmaWxsPSIjMjIyIi8+PGNpcmNsZSBjeD0iMjAiIGN5PSI0NCIgcj0iMiIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjQyIiBjeT0iNDQiIHI9IjUiIGZpbGw9IiMyMjIiLz48Y2lyY2xlIGN4PSI0MiIgY3k9IjQ0IiByPSIyIiBmaWxsPSIjZmZmIi8+PC9zdmc+" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiNGRkU2MDAiLz48cmVjdCB4PSI5IiB5PSIyNSIgd2lkdGg9IjI2IiBoZWlnaHQ9IjE2IiByeD0iMiIgZmlsbD0iIzM0ODNGQSIvPjxwYXRoIGQ9Ik0zNSAyOWg4LjVsNi41IDd2NUgzNXoiIGZpbGw9IiNGRjc3MzMiLz48Y2lyY2xlIGN4PSIyMCIgY3k9IjQ0IiByPSI1IiBmaWxsPSIjMjIyIi8+PGNpcmNsZSBjeD0iMjAiIGN5PSI0NCIgcj0iMiIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjQyIiBjeT0iNDQiIHI9IjUiIGZpbGw9IiMyMjIiLz48Y2lyY2xlIGN4PSI0MiIgY3k9IjQ0IiByPSIyIiBmaWxsPSIjZmZmIi8+PC9zdmc+" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
+  @keyframes pop { from{transform:scale(.92);opacity:0} to{transform:scale(1);opacity:1} }
+  @keyframes slideup { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:'Montserrat',system-ui,sans-serif; }
+  html,body { margin:0; padding:0; background:#ededed; }
+  input,select { font-size:16px !important; }
+  ::placeholder { color:#aab; }
+  .leaflet-container { font-family:'Montserrat',sans-serif; }
+</style>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+</head>
+<body>
+<script>
+(function(){
+  // Detecta se é dispositivo móvel (touchscreen / user-agent)
+  var _isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || ('ontouchstart' in window);
+
+  // No mobile: só bloqueia atalhos de teclado (improvável, mas por precaução)
+  // A detecção por tamanho de janela NÃO roda no mobile pois as barras do browser
+  // naturalmente causam diferença de outerHeight/innerHeight, gerando falsos positivos.
+  var _devOpen = false;
+  var _threshold = 200;
+
+  function _check(){
+    if(_isMobile) return; // mobile: nunca bloqueia por tamanho
+    var w = window.outerWidth  - window.innerWidth  > _threshold;
+    var h = window.outerHeight - window.innerHeight > _threshold;
+    if(w || h){
+      if(!_devOpen){
+        _devOpen = true;
+        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#FFE600;font-family:Montserrat,sans-serif;"><div style="text-align:center;"><div style="font-size:48px;">🔒</div><div style="font-size:22px;font-weight:800;margin-top:12px;">Acesso Restrito</div><div style="font-size:14px;color:#555;margin-top:8px;">Ferramentas de desenvolvedor não permitidas.</div></div></div>';
+      }
+    } else {
+      _devOpen = false;
+    }
+  }
+
+  setInterval(_check, 800);
+
+  // Bloqueia atalhos de teclado em qualquer dispositivo
+  document.addEventListener('keydown', function(e){
+    if(e.key==='F12' || (e.ctrlKey&&e.shiftKey&&(e.key==='I'||e.key==='J'||e.key==='C')) || (e.ctrlKey&&e.key==='U')){
+      e.preventDefault(); e.stopPropagation(); return false;
+    }
+  }, true);
+
+  // Bloqueia menu de contexto só no desktop (no mobile atrapalha copiar texto)
+  if(!_isMobile){
+    document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+  }
+})();
+</script>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const DEFAULT_CFG = {
+  yardName: "Mercado Livre · CD Contagem",
+  lat: -19.9626432, lng: -44.0208931, radius: 300,
+  webapp: "https://script.google.com/macros/s/AKfycbzdY2mq2ayvQZX4gE4hmKevJgee7n7g48os4dzYzOAmQYtR-Ma84cmLRnx-gOkYnzXt/exec",
+  ipcheck: "",
+  gpsSec: 8, pollSec: 8
+};
+const _dk=b=>{try{return[...atob(b)].map(c=>String.fromCharCode(c.charCodeAt(0)^43)).join("");}catch(e){return"";}};
+const _g0 = _dk("G0pNHE8cGh4TSU5ISB1PGxlPSB8aHhgdGhscGxIbThwcGhIeSE0SG0geHh1ISk9JGBwTHR0eGRNISBIfThNKEg==");
+const _g1 = _dk("EkpNGh5JGBgdTh1KEh0aEhIZEx4YHE9NGBtJGU4dShkYHB0eHRJNSE0STxxOHBwYTkhITk9OHR4dGx0eGRJKGw==");
+const _gOp = "bcac371b54f59945a14aa49e2e408e5d6e4dbc59387f5d8cfc6b015d40d5bb02"; // senha da Operação: 2233
+// horário-alvo de chegada por ciclo e onda (atraso = chegou depois disso)
+const SCHEDULE = {
+  AM:  { 1:"07:30", 2:"08:00", 3:"08:30", 4:"09:00" },
+  PM:  { 1:"14:00", 2:"14:30", 3:"15:00", 4:"15:30" },
+  SD:  { 1:"16:00", 2:"16:30", 3:"17:00" },
+  CHP: { 1:"06:00", 2:"06:30" },
+};
+const ondaNum = o => { const m=String(o==null?"":o).match(/\d+/); return m?+m[0]:null; };
+const targetFor = (cycle,onda) => { const n=ondaNum(onda); return (SCHEDULE[cycle]&&n&&SCHEDULE[cycle][n])||null; };
+const hhmmFromTs = ts => { const d=new Date(ts); return d.getHours()*60+d.getMinutes(); };
+// horário-corte do ciclo: alvo da onda; se a onda não for conhecida, usa a última onda do ciclo
+const cutoffFor=(cycle,onda)=>{ const t=targetFor(cycle,onda); if(t)return t; const s=SCHEDULE[cycle]; if(!s)return null; let best=null,bestM=-1; for(const k in s){ const m=toMin(s[k]); if(m>bestM){bestM=m;best=s[k];} } return best; };
+// info de atraso: quem chegou usa a hora real de chegada; quem ainda está a caminho fica "atrasado" se o horário-corte já passou
+function delayInfo(r){
+  const cy=cyMeta(r.cycle); const ws=(cy&&cy.start)?toMin(cy.start):null;
+  if(r.arrTs){
+    const t=targetFor(r.cycle,r.onda); if(!t) return { meta:null };
+    const arr=hhmmFromTs(r.arrTs); const lateMin=arr-toMin(t);
+    let status="no_horario", earlyMin=0;
+    if(lateMin>0) status="atrasado";
+    else if(ws!=null && arr<ws){ status="antecipado"; earlyMin=ws-arr; }
+    return { meta:t, lateMin, late:lateMin>0, status, earlyMin, antecipado:status==="antecipado", overdue:false, arrived:true };
+  }
+  if(r.status==="a_caminho"){
+    const t=cutoffFor(r.cycle,r.onda); if(!t) return { meta:null };
+    const lateMin=nowMin()-toMin(t);
+    if(lateMin>0) return { meta:t, lateMin, late:true, status:"atrasado", earlyMin:0, antecipado:false, overdue:true, arrived:false };
+    return { meta:t, lateMin:0, late:false, status:"a_caminho", earlyMin:0, antecipado:false, overdue:false, arrived:false };
+  }
+  return { meta:null };
+}
+const CARRIERS = ["ADO TRANSPORTES","A L C TRANSPORTES","BLD LOGÍSTICA","COOPMETRO","Nepomuceno","DHL","HELP ME SOLUCOES","CAXIENSE LOG","RodaCoop","PARCEIRO SPOT SOLUCOES","HAWK TRANSPORTES LTDA","BASEPEX ENCOM","DECARGO","Kangu Logistics","Transportadora Grupo Imediato"];
+// transportadoras ignoradas neste app (ex.: Envios Extra terá app próprio)
+const HIDE_CARRIERS = ["Envios Extra"];
+const carrierHidden = n => HIDE_CARRIERS.some(x=>String(n==null?"":n).trim().toLowerCase()===x.trim().toLowerCase());
+const JUSTIF_CATS = ["Trânsito","Problema no veículo","Atraso na coleta/carregamento","Documentação / nota fiscal","Acidente / via interditada","Condições climáticas","Excesso de paradas / rota longa","Problema pessoal do motorista","Falha no aplicativo / sistema","Outro"];
+const CYCLES = [
+  { k:"CHP", start:"05:00", end:"12:00", color:"#7c5cff" },
+  { k:"AM",  start:"06:00", end:"12:00", color:"#3483FA" },
+  { k:"PM",  start:"12:00", end:"18:00", color:"#ff8800" },
+  { k:"SD",  start:"14:00", end:"19:00", color:"#00a6a6" },
+  { k:"AMB", start:null,    end:null,    color:"#e63946", amb:true },
+];
+const cyMeta = k => CYCLES.find(c=>c.k===k) || { k:k||"—", start:null, end:null, color:"#999" };
+const CARRIER_COLORS=["#e6194B","#3cb44b","#4363d8","#f58231","#911eb4","#00b8d4","#f032e6","#7cb342","#d81b60","#00897b","#6d4c41","#5e35b1","#c0ca33","#fb8c00","#1e88e5","#8d6e63"];
+function carrierColor(name){ if(!name)return"#999"; const i=CARRIERS.indexOf(name); if(i>=0)return CARRIER_COLORS[i%CARRIER_COLORS.length]; let h=0; for(let k=0;k<name.length;k++)h=(h*31+name.charCodeAt(k))>>>0; return CARRIER_COLORS[h%CARRIER_COLORS.length]; }
+const winStr = c => (c&&c.start)?`${c.start}–${c.end}`:"";
+const toMin = hhmm => { const [h,m]=String(hhmm).split(":").map(Number); return h*60+(m||0); };
+const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+
+const C = { yellow:"#FFE600", yellowDark:"#FFD000", blue:"#3483FA", blueDark:"#2968c8", green:"#00A650", orange:"#FF7733", red:"#e63946", bg:"#ededed", card:"#fff", line:"#e6e6e6", text:"#333", dim:"#767676", faint:"#999" };
+
+const Rt=6371000;
+function haversine(a,b,c,d){const t=x=>x*Math.PI/180;const dLat=t(c-a),dLng=t(d-b);const h=Math.sin(dLat/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dLng/2)**2;return Rt*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+const fmtDist=m=>m==null?"—":(m<1000?`${Math.round(m)} m`:`${(m/1000).toFixed(1)} km`);
+function fmtAgo(ts){const s=Math.round((Date.now()-ts)/1000);if(s<60)return`há ${s}s`;const m=Math.round(s/60);if(m<60)return`há ${m} min`;return`há ${Math.round(m/60)} h`;}
+const etaStraight=(m,k=28)=>m==null?null:Math.max(1,Math.round((m/1000/k)*60));
+function bearing(a,b){const t=x=>x*Math.PI/180;const y=Math.sin(t(b.lng-a.lng))*Math.cos(t(b.lat));const x=Math.cos(t(a.lat))*Math.sin(t(b.lat))-Math.sin(t(a.lat))*Math.cos(t(b.lat))*Math.cos(t(b.lng-a.lng));return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+function sget(k){try{const v=localStorage.getItem("cp_"+k);return v?JSON.parse(v):null}catch{return null}}
+function sset(k,v){try{localStorage.setItem("cp_"+k,JSON.stringify(v))}catch{}}
+async function sha256hex(s){ try{ const b=new TextEncoder().encode(String(s)); const h=await crypto.subtle.digest("SHA-256",b); return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,"0")).join(""); }catch(e){ return ""; } }
+async function pushRemote(url,rec){ if(!url)return; try{ await fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(rec)});}catch(e){} }
+function jsonp(url){return new Promise((res,rej)=>{const cb="cb_"+Math.random().toString(36).slice(2);const s=document.createElement("script");let done=false;window[cb]=d=>{done=true;res(d);try{delete window[cb]}catch{};s.remove();};s.onerror=()=>{if(!done)rej(new Error("falha"));s.remove();};s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;document.body.appendChild(s);setTimeout(()=>{if(!done){rej(new Error("timeout"));s.remove();}},9000);});}
+async function roadInfo(fLat,fLng,tLat,tLng){try{const u=`https://router.project-osrm.org/route/v1/driving/${fLng},${fLat};${tLng},${tLat}?overview=false`;const r=await fetch(u);const j=await r.json();if(j.routes&&j.routes[0]){return{eta:Math.max(1,Math.round(j.routes[0].duration/60)),roadDist:j.routes[0].distance};}}catch(e){}return null;}
+function num(x){return Number(String(x).replace(",","."));}
+function mapRow(r,i){const st=String(r.status||"");const status=/SA[IÍ]U/i.test(st)?"saiu":(/P[ÁA]TIO/i.test(st)?"chegou":"a_caminho");return{id:r.sid||("r"+i),name:r.name||"—",carrier:r.carrier||"",route:r.route||"",cycle:r.cycle||"",lat:num(r.lat),lng:num(r.lng),dist:num(r.dist),eta:num(r.eta)||null,status,ts:num(r.ts)||Date.now(),onda:r.onda||"",vaga:r.vaga||"",senha:r.senha||"",justif:r.justif||"",justifCat:r.justifCat||"",arrTs:num(r.arrTs)||null};}
+
+/* ===== Firebase Realtime Database (rastreio ao vivo) ===== */
+const FIREBASE_CONFIG={apiKey:"AIzaSyAedQqQV9ab2kvIMLySrtVzdk-iWUgJhyU",authDomain:"projetodrivers.firebaseapp.com",databaseURL:"https://projetodrivers-default-rtdb.firebaseio.com",projectId:"projetodrivers",storageBucket:"projetodrivers.firebasestorage.app",messagingSenderId:"680564905422",appId:"1:680564905422:web:e3b4292770dda3c489c79f"};
+let fbDB=null;
+try{ if(window.firebase&&!firebase.apps.length){ firebase.initializeApp(FIREBASE_CONFIG); } if(window.firebase){ fbDB=firebase.database(); fbDB.goOffline(); } }catch(e){ console.error("Firebase init falhou:",e); }
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+function fbOnline(){ try{ fbDB&&fbDB.goOnline(); }catch(e){} }
+function fbOffline(){ try{ fbDB&&fbDB.goOffline(); }catch(e){} }
+// converte o snapshot de /ativos pra lista no formato das telas (status já é canônico)
+function fbRows(val){ const out=[],today=todayStr(); if(val){ Object.keys(val).forEach(k=>{ const r=val[k]||{}; if(r.day!==today) return; if(carrierHidden(r.carrier)) return; out.push({id:r.sid||k,name:r.name||"—",carrier:r.carrier||"",route:r.route||"",cycle:r.cycle||"",lat:num(r.lat),lng:num(r.lng),dist:num(r.dist),eta:(r.eta==null?null:num(r.eta)),status:r.status||"a_caminho",ts:num(r.ts)||Date.now(),onda:r.onda||"",vaga:r.vaga||"",senha:r.senha||"",justif:r.justif||"",justifCat:r.justifCat||"",arrTs:(r.arrTs==null?null:num(r.arrTs)),galpao:!!r.galpao,chamado:(r.chamado==null?null:num(r.chamado))}); }); } return out; }
+/* ===== som + vibração da chamada (motorista) ===== */
+let _actx=null;
+function playCallBeep(){ try{
+  if(!_actx){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; _actx=new AC(); }
+  if(_actx.state==="suspended") _actx.resume();
+  const t0=_actx.currentTime;
+  [0,0.28,0.56].forEach(off=>{ const o=_actx.createOscillator(),g=_actx.createGain();
+    o.type="sine"; o.frequency.setValueAtTime(880,t0+off); o.frequency.setValueAtTime(1174,t0+off+0.12);
+    g.gain.setValueAtTime(0.0001,t0+off); g.gain.exponentialRampToValueAtTime(0.5,t0+off+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t0+off+0.24);
+    o.connect(g); g.connect(_actx.destination); o.start(t0+off); o.stop(t0+off+0.26); });
+}catch(e){} }
+function triggerCallFX(){ try{ navigator.vibrate && navigator.vibrate([320,140,320,140,600]); }catch(e){} playCallBeep(); }
+// histórico persistente (alimenta a aba Análise) -> formato de linha do resumo
+const t2hm=ts=>{ if(!ts)return""; const d=new Date(num(ts)); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+function histToRow(h,day){ const arrTs=h.arrTs?num(h.arrTs):null; const tgt=targetFor(h.ciclo,h.onda); let atraso="",status=""; if(tgt&&arrTs){ const arr=hhmmFromTs(arrTs); atraso=arr-toMin(tgt); const cy=cyMeta(h.ciclo); const ws=(cy&&cy.start)?toMin(cy.start):null; status=atraso>0?"atrasado":((ws!=null&&arr<ws)?"antecipado":"no_horario"); } return {sid:h.sid,dia:day||h.day||"",nome:h.nome||"—",carrier:h.carrier||"",ciclo:h.ciclo||"",onda:h.onda||"",rota:h.rota||"",checkin:t2hm(h.checkinTs),raio:t2hm(h.raioTs),chegada:t2hm(h.arrTs),saida:t2hm(h.saidaTs),atraso,status,justifCat:h.justifCat||"",justif:h.justif||""}; }
+function datesBetween(from,to){ const out=[]; const a=new Date(from+"T00:00:00"),b=new Date(to+"T00:00:00"); if(isNaN(a)||isNaN(b))return out; for(let d=new Date(a); d<=b && out.length<400; d.setDate(d.getDate()+1)) out.push(ymd(d)); return out; }
+async function fbHistRows(from,to){ if(!fbDB)return[]; fbOnline(); const days=datesBetween(from,to); const snaps=await Promise.all(days.map(d=>fbDB.ref("historico/"+d).once("value").catch(()=>null))); const rows=[]; snaps.forEach((s,i)=>{ const day=days[i]; const v=s&&s.val(); if(v) Object.keys(v).forEach(k=>{ const h=v[k]||{}; h.sid=h.sid||k; if(carrierHidden(h.carrier)) return; rows.push(histToRow(h,day)); }); }); return rows; }
+
+function App(){
+  const [tab,setTab]=useState("motorista");
+  const [showTabs,setShowTabs]=useState(false);
+  const [cfg,setCfg]=useState(DEFAULT_CFG);
+  const [authed,setAuthed]=useState(()=>sessionStorage.getItem("cp_auth")==="1");
+  const [authed2,setAuthed2]=useState(()=>sessionStorage.getItem("cp_auth2")==="1");
+  const [authedOp,setAuthedOp]=useState(()=>sessionStorage.getItem("cp_authOp")==="1");
+  useEffect(()=>{const c=sget("config");if(c)setCfg({...DEFAULT_CFG,...c,webapp:(c.webapp&&c.webapp.trim())||DEFAULT_CFG.webapp});},[]);
+  const saveCfg=useCallback(n=>{setCfg(n);sset("config",n);},[]);
+  const auth=()=>{sessionStorage.setItem("cp_auth","1");setAuthed(true);};
+  const auth2=()=>{sessionStorage.setItem("cp_auth2","1");setAuthed2(true);};
+  const authOp=()=>{sessionStorage.setItem("cp_authOp","1");setAuthedOp(true);};
+  const toggleTabs=()=>setShowTabs(s=>{ const n=!s; if(!n) setTab("motorista"); return n; });
+  return (
+    <div style={{background:C.bg,minHeight:"100vh",color:C.text}}>
+      <div style={{maxWidth:600,margin:"0 auto",minHeight:"100vh"}}>
+        <Header cfg={cfg} onLogo={toggleTabs} open={showTabs}/>
+        {showTabs && <Tabs tab={tab} setTab={setTab}/>}
+        <div style={{padding:16}}>
+          {tab==="motorista" && <DriverScreen cfg={cfg}/>}
+          {tab==="operacao" && (authedOp ? <OperacaoScreen cfg={cfg}/> : <Gate cfg={cfg} k={_gOp} title="Operação · chamada de motoristas" sub="Digite a senha da operação para chamar os motoristas e bipar as saídas." onOk={authOp}/>) }
+          {tab==="painel" && (authed ? <PanelScreen cfg={cfg} onSaveCfg={saveCfg}/> : <Gate cfg={cfg} k={_g0} title="Painel restrito" sub="Digite a senha para ver quem está chegando." onOk={auth}/>) }
+          {tab==="atrasos" && (authed ? <DelaysScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g0} title="Atrasos · acesso da coordenação" sub="Digite a senha para ver as justificativas e os relatórios." onOk={auth}/>) }
+          {tab==="analise" && (authed ? <AnaliseScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g0} title="Análise · acesso restrito" sub="Digite a senha para ver o histórico e os relatórios." onOk={auth}/>) }
+          {tab==="saidas" && (authed ? <SaidasScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g0} title="Fluxo · acesso da coordenação" sub="Digite a senha para ver o fluxo do pátio." onOk={auth}/>) }
+          {tab==="dispatcher" && (authed2 ? <DispatcherScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g1} title="Painel da transportadora" sub="Digite a senha do dispatcher para acompanhar os seus motoristas." onOk={auth2}/>) }
+          {tab==="controle" && (authed2 ? <ControleDispatcherScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g1} title="Controle Dispatcher" sub="Digite a senha do dispatcher para ver o fluxo da sua transportadora." onOk={auth2}/>) }
+          {tab==="justdisp" && (authed2 ? <JustifyDispatcherScreen cfg={cfg}/> : <Gate cfg={cfg} k={_g1} title="Justificar atrasos" sub="Digite a senha do dispatcher para justificar os atrasos dos seus motoristas." onOk={auth2}/>) }
+        </div>
+        <div style={{textAlign:"center",padding:"4px 0 28px",color:C.faint,fontSize:11}}>Check-in de Pátio · uso interno</div>
+      </div>
+    </div>
+  );
+}
+function Header({cfg,onLogo,open}){return(<div style={{background:C.yellow,padding:"16px 18px 18px",borderBottom:`1px solid ${C.yellowDark}`}}><div style={{display:"flex",alignItems:"center",gap:10}}><div onClick={onLogo} style={{width:38,height:38,borderRadius:"50%",background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,boxShadow:"0 1px 3px rgba(0,0,0,.12)",cursor:"pointer",userSelect:"none",outline:open?`2px solid ${C.blue}`:"none"}}>🚚</div><div><div style={{fontWeight:800,fontSize:19,lineHeight:1}}>Check-in de Pátio</div><div style={{fontSize:12,color:"#5a5a3a",marginTop:3,fontWeight:600}}>{cfg.yardName}</div></div></div></div>);}
+const NAV=[
+  {g:"motorista",label:"Motorista",tabs:[["motorista","Motorista"]]},
+  {g:"coord",label:"Coordenação",tabs:[["painel","Painel"],["saidas","Fluxo"],["atrasos","Atrasos"],["analise","Análise"]]},
+  {g:"disp",label:"Dispatcher",tabs:[["dispatcher","Painel"],["controle","Controle"],["justdisp","Atrasos"]]},
+  {g:"operacao",label:"Operação",tabs:[["operacao","Operação"]]},
+];
+const groupOf=t=>{ for(const n of NAV){ if(n.tabs.some(x=>x[0]===t)) return n.g; } return "motorista"; };
+function Tabs({tab,setTab}){
+  const ag=groupOf(tab); const grp=NAV.find(n=>n.g===ag)||NAV[0];
+  return (<div style={{padding:"12px 16px 0"}}>
+    <div style={{display:"flex",gap:6,background:"#fff",padding:5,borderRadius:13,boxShadow:"0 1px 3px rgba(0,0,0,.07)"}}>
+      {NAV.map(n=>(
+        <button key={n.g} onClick={()=>{ if(n.g!==ag) setTab(n.tabs[0][0]); }} style={{flex:1,border:"none",cursor:"pointer",padding:"10px 3px",borderRadius:9,fontWeight:800,fontSize:11.5,whiteSpace:"nowrap",background:n.g===ag?C.blue:"transparent",color:n.g===ag?"#fff":C.dim,boxShadow:n.g===ag?"0 2px 6px rgba(52,131,250,.3)":"none",transition:"background .15s,color .15s"}}>{n.label}</button>
+      ))}
+    </div>
+    {grp.tabs.length>1 && <div style={{display:"flex",gap:6,marginTop:8}}>
+      {grp.tabs.map(([k,l])=>(
+        <button key={k} onClick={()=>setTab(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:9,fontWeight:700,fontSize:12.5,whiteSpace:"nowrap",background:tab===k?"rgba(52,131,250,.1)":"#fff",color:tab===k?C.blue:C.dim,boxShadow:tab===k?`inset 0 0 0 1.5px ${C.blue}`:"0 1px 2px rgba(0,0,0,.05)"}}>{l}</button>
+      ))}
+    </div>}
+  </div>);
+}
+
+/* ============ MOTORISTA ============ */
+function DriverScreen({cfg}){
+  const [name,setName]=useState(""),[carrier,setCarrier]=useState(""),[route,setRoute]=useState(""),[cycle,setCycle]=useState("");
+  const [pos,setPos]=useState(null),[geo,setGeo]=useState("idle"),[err,setErr]=useState(""),[manual,setManual]=useState(false);
+  const [mLat,setMLat]=useState(""),[mLng,setMLng]=useState("");
+  const [eta,setEta]=useState(null),[etaLoad,setEtaLoad]=useState(false);
+  const [sent,setSent]=useState(null),[sending,setSending]=useState(false);
+  const [liveOn,setLiveOn]=useState(false),[liveInfo,setLiveInfo]=useState(null),[resumed,setResumed]=useState(false);
+  const [arrived,setArrived]=useState(false),[arrErr,setArrErr]=useState(""),[confirming,setConfirming]=useState(false),[departed,setDeparted]=useState(false),[myPos,setMyPos]=useState(null),[navOpen,setNavOpen]=useState(true),[editing,setEditing]=useState(false);
+  const [assign,setAssign]=useState(null),[assignLoad,setAssignLoad]=useState(false),[inGalpao,setInGalpao]=useState(false);
+  const [called,setCalled]=useState(null),[callInfo,setCallInfo]=useState(null);
+  const [,forceTick]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>forceTick(x=>x+1),30000);return()=>clearInterval(t);},[]);
+  const live=useRef({watchId:null,sid:null,last:0,name:"",carrier:"",route:"",cycle:"",wakeLock:null,onVis:null,onBU:null,lastPos:null,atGate:false,assign:null,arrived:false,departed:false,checkinTs:null,raioTs:null,arrTs:null,saidaTs:null,onda:null,vaga:null,senha:null,galpao:false,galpaoTs:null,ackChamado:0,callRef:null,callHandler:null});
+
+  const dist=pos?haversine(pos.lat,pos.lng,cfg.lat,cfg.lng):null;
+  const inside=dist!=null&&dist<=cfg.radius;
+
+  useEffect(()=>{ if(!pos){setEta(null);return;} let cancel=false; setEtaLoad(true);
+    roadInfo(pos.lat,pos.lng,cfg.lat,cfg.lng).then(info=>{ if(cancel)return; setEta(info?info.eta:etaStraight(dist)); setEtaLoad(false); });
+    return ()=>{cancel=true;};
+  },[pos]);
+  useEffect(()=>()=>{
+    if(live.current.watchId!=null) navigator.geolocation.clearWatch(live.current.watchId);
+    try{ live.current.wakeLock && live.current.wakeLock.release(); }catch(e){}
+    if(live.current.onVis) document.removeEventListener("visibilitychange",live.current.onVis);
+    if(live.current.onBU) window.removeEventListener("beforeunload",live.current.onBU);
+  },[]);
+
+  const locate=()=>{ setGeo("loading");setErr("");
+    if(!navigator.geolocation){setGeo("error");setErr("Este aparelho não tem GPS.");setManual(true);return;}
+    navigator.geolocation.getCurrentPosition(
+      p=>{setPos({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy});setGeo("ok");},
+      e=>{setGeo("error");setErr(e.code===1?"Você precisa permitir o acesso à localização.":"Não consegui pegar o GPS. Use o modo manual.");setManual(true);},
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  };
+  const useManual=()=>{const la=parseFloat(mLat),ln=parseFloat(mLng);if(isNaN(la)||isNaN(ln))return;setPos({lat:la,lng:ln,acc:null});setGeo("ok");};
+  const simulate=w=>{const o={perto:[0.0008,0.0006],longe:[0.05,0.04]}[w];setPos({lat:cfg.lat+o[0],lng:cfg.lng+o[1],acc:8});setGeo("ok");};
+
+  const live2fb=(rec)=>{ if(!fbDB||!rec||!rec.sid) return Promise.resolve();
+    if(rec.event==="justify"){ try{ return fbDB.ref("ativos/"+rec.sid+"/justif").set(rec.justificativa||""); }catch(e){ return Promise.resolve(); } }
+    const u={sid:rec.sid,name:rec.name||"",carrier:rec.carrier||"",route:rec.route||"",cycle:rec.cycle||"",status:rec.status||"a_caminho",dist:(rec.dist==null?null:rec.dist),eta:(rec.eta==null?null:rec.eta),lat:(rec.lat==null?null:rec.lat),lng:(rec.lng==null?null:rec.lng),ts:Date.now(),day:todayStr()};
+    const _onda=rec.onda||live.current.onda,_vaga=rec.vaga||live.current.vaga,_senha=rec.senha||live.current.senha;
+    if(_onda) u.onda=_onda; if(_vaga) u.vaga=_vaga; if(_senha) u.senha=_senha;
+    if(live.current.checkinTs) u.checkinTs=live.current.checkinTs;
+    if(live.current.raioTs) u.raioTs=live.current.raioTs;
+    if(live.current.arrTs) u.arrTs=live.current.arrTs;
+    if(live.current.saidaTs) u.saidaTs=live.current.saidaTs;
+    if(rec.event==="checkin"||rec.event==="arrived"||rec.event==="checkout"){
+      const h={sid:rec.sid,nome:rec.name||"",carrier:rec.carrier||"",ciclo:rec.cycle||"",rota:rec.route||"",day:todayStr()};
+      if(_onda) h.onda=_onda;
+      if(live.current.checkinTs) h.checkinTs=live.current.checkinTs;
+      if(live.current.raioTs) h.raioTs=live.current.raioTs;
+      if(live.current.arrTs) h.arrTs=live.current.arrTs;
+      if(live.current.saidaTs) h.saidaTs=live.current.saidaTs;
+      try{ fbDB.ref("historico/"+todayStr()+"/"+rec.sid).update(h); }catch(e){}
+    }
+    try{ return fbDB.ref("ativos/"+rec.sid).update(u); }catch(e){ return Promise.resolve(); }
+  };
+  const sendNow=(la,ln)=>{
+    const dst=haversine(la,ln,cfg.lat,cfg.lng),ins=dst<=cfg.radius;
+    live.current.lastPos={lat:la,lng:ln}; setMyPos({lat:la,lng:ln});
+    if(ins && !live.current.raioTs) live.current.raioTs=Date.now();
+    const e2=etaStraight(dst);
+    setLiveInfo({dist:dst,eta:e2,inside:ins,at:Date.now()});
+    if(live.current.atGate && ins) return;                                            // no raio: GPS local, sem enviar
+    if(live.current.atGate && !ins){ live.current.atGate=false; fbOnline(); setLiveOn(true); }   // saiu do raio: reconecta
+    live2fb({sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,status:ins?"chegou":"a_caminho",dist:Math.round(dst),eta:e2,lat:la,lng:ln,event:"update"});
+  };
+  const markDeparted=()=>{ live.current.arrived=false; live.current.departed=true; live.current.galpao=false; setInGalpao(false); setDeparted(true); setArrived(false); stopLive(true); persistSession({departed:true}); };
+  const enterGalpao=async()=>{
+    live.current.galpao=true; live.current.galpaoTs=Date.now();
+    if(fbDB){ try{ fbOnline(); await fbDB.ref("ativos/"+live.current.sid).update({galpao:true,galpaoTs:live.current.galpaoTs}); fbDB.ref("historico/"+todayStr()+"/"+live.current.sid).update({galpao:true}); }catch(e){} setTimeout(()=>fbOffline(),2000); }
+    setInGalpao(true); persistSession({galpao:true});
+  };
+  const manualCheckout=async()=>{
+    const lp=live.current.lastPos||{lat:cfg.lat,lng:cfg.lng};
+    live.current.saidaTs=Date.now();
+    const rec={sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,status:"saiu",dist:0,eta:0,lat:lp.lat,lng:lp.lng,event:"checkout"};
+    fbOnline();
+    try{ await live2fb(rec); }catch(e){}
+    fbOffline();
+    markDeparted();
+  };
+  const reqWake=async()=>{ try{ if("wakeLock" in navigator) live.current.wakeLock=await navigator.wakeLock.request("screen"); }catch(e){} };
+  const persistSession=(opts)=>{ const ar=(opts&&"arrived" in opts)?opts.arrived:!!live.current.arrived; const dp=(opts&&"departed" in opts)?opts.departed:!!live.current.departed; const gp=(opts&&"galpao" in opts)?opts.galpao:!!live.current.galpao; sset("session",{sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,day:new Date().toDateString(),arrived:!!ar,departed:!!dp,galpao:!!gp,galpaoTs:live.current.galpaoTs||null,checkinTs:live.current.checkinTs||null,raioTs:live.current.raioTs||null,arrTs:live.current.arrTs||null,saidaTs:live.current.saidaTs||null,ackChamado:live.current.ackChamado||0,calledTs:(opts&&"calledTs" in opts)?opts.calledTs:(live.current.lastCalledTs||null)}); };
+  const clearSession=()=>{ try{localStorage.removeItem("cp_session")}catch(e){} };
+  const startWatch=()=>{ if(!navigator.geolocation)return;
+    fbOnline(); live.current.atGate=false;
+    live.current.last=0;
+    const gpsMs=Math.max(3,Number(cfg.gpsSec)||8)*1000;
+    const id=navigator.geolocation.watchPosition(p=>{
+      const la=p.coords.latitude,ln=p.coords.longitude;
+      const dst=haversine(la,ln,cfg.lat,cfg.lng),ins=dst<=cfg.radius;
+      live.current.lastPos={lat:la,lng:ln}; setMyPos({lat:la,lng:ln});   // mapa: suave, a cada posição (local)
+      if(ins&&!live.current.raioTs) live.current.raioTs=Date.now();
+      const e2=etaStraight(dst);
+      setLiveInfo({dist:dst,eta:e2,inside:ins,at:Date.now()});
+      if(ins){
+        if(!live.current.atGate){   // entrou no raio: manda 1 último ponto e solta a conexão (libera vaga no banco); GPS segue local
+          live.current.atGate=true; setLiveOn(false);
+          const fin=live2fb({sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,status:"chegou",dist:Math.round(dst),eta:e2,lat:la,lng:ln,event:"update"});
+          Promise.resolve(fin).then(()=>fbOffline(),()=>fbOffline());
+        }
+        return;   // dentro do raio: não envia mais nada até confirmar
+      }
+      if(live.current.atGate){ live.current.atGate=false; fbOnline(); setLiveOn(true); live.current.last=0; }   // saiu do raio: reconecta e volta a enviar
+      const now=Date.now(); if(now-live.current.last>=gpsMs){ live.current.last=now; live2fb({sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,status:"a_caminho",dist:Math.round(dst),eta:e2,lat:la,lng:ln,event:"update"}); }   // Firebase: a cada gpsSec
+    },()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:25000});
+    live.current.watchId=id; setLiveOn(true); reqWake();
+    // ao voltar pro app (visível de novo): reativa trava de tela e força um envio
+    const onVis=()=>{ if(document.visibilityState==="visible" && live.current.watchId!=null){ reqWake(); live.current.last=0; navigator.geolocation.getCurrentPosition(p=>sendNow(p.coords.latitude,p.coords.longitude),()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:15000}); } };
+    document.addEventListener("visibilitychange",onVis); live.current.onVis=onVis;
+    persistSession();
+  };
+  const startLive=(sid)=>{ live.current.sid=sid; live.current.name=name; live.current.carrier=carrier; live.current.route=route; live.current.cycle=cycle; live.current.arrived=false; live.current.departed=false; persistSession(); startWatch(); };
+  // modificar dados do check-in atual: mesma sessão, mesmo nome, mesmo horário; só corrige ciclo/transportadora/rota e recalcula a vaga
+  const applyEdit=async({carrier:nc,route:nr,cycle:ncy})=>{
+    live.current.carrier=nc; live.current.route=nr; live.current.cycle=ncy;
+    setCarrier(nc); setRoute(nr); setCycle(ncy);
+    let a=null; try{ a=await lookupAssign(ncy,nr); }catch(e){}
+    if(a&&a.found){ live.current.onda=a.onda; live.current.vaga=a.gaiola; live.current.senha=a.senha; }
+    else { live.current.onda=null; live.current.vaga=null; live.current.senha=null; }
+    setAssign(a||(ncy==="AMB"?{found:false,amb:true}:{found:false,error:true}));
+    if(fbDB){ fbOnline();
+      const u={carrier:nc,route:nr,cycle:ncy,ts:Date.now(),day:todayStr()};
+      if(a&&a.found){ u.onda=a.onda; u.vaga=a.gaiola; u.senha=a.senha; }
+      try{ await fbDB.ref("ativos/"+live.current.sid).update(u); }catch(e){}
+      const h={carrier:nc,ciclo:ncy,rota:nr}; if(a&&a.found) h.onda=a.onda;   // mantém checkinTs (log do 1º check-in intacto)
+      try{ await fbDB.ref("historico/"+todayStr()+"/"+live.current.sid).update(h); }catch(e){}
+      if(live.current.arrived||live.current.atGate||live.current.watchId==null) fbOffline(); else fbOnline();   // restaura conexão certa
+    }
+    setSent(s=> s?{...s,carrier:nc,route:nr,cycle:ncy}:s);
+    persistSession();
+    setEditing(false);
+  };
+  const stopLive=(keep)=>{
+    if(live.current.watchId!=null)navigator.geolocation.clearWatch(live.current.watchId); live.current.watchId=null;
+    try{ live.current.wakeLock && live.current.wakeLock.release(); }catch(e){} live.current.wakeLock=null;
+    if(live.current.onVis){ document.removeEventListener("visibilitychange",live.current.onVis); live.current.onVis=null; }
+    if(live.current.onBU){ window.removeEventListener("beforeunload",live.current.onBU); live.current.onBU=null; }
+    if(!keep) clearSession();
+    setLiveOn(false);
+  };
+
+  const lookupAssign=(cycle,route)=>{
+    if(cycle==="AMB"||!cfg.webapp) return Promise.resolve(null);
+    const u=cfg.webapp+(cfg.webapp.includes("?")?"&":"?")+"lookup=1&cycle="+encodeURIComponent(cycle)+"&route="+encodeURIComponent(route);
+    return Promise.race([ jsonp(u).catch(()=>null), new Promise(r=>setTimeout(()=>r(null),6000)) ]);
+  };
+  const lookupAssignRetry=async(cycle,route,tries)=>{
+    tries=tries||5;
+    for(let i=0;i<tries;i++){
+      const d=await lookupAssign(cycle,route);
+      if(d&&(d.found||d.amb)) return d;
+      if(i<tries-1) await new Promise(r=>setTimeout(r,1200));
+    }
+    return {found:false};
+  };
+  const fetchAssign=(cycle,route)=>{
+    if(cycle==="AMB"){ setAssign({found:false,amb:true}); return; }
+    if(!cfg.webapp){ setAssign({found:false,error:true}); return; }
+    setAssignLoad(true); setAssign(null);
+    lookupAssignRetry(cycle,route).then(d=>{ setAssign(d||{found:false,error:true}); setAssignLoad(false); });
+  };
+
+  const confirmArrival=async()=>{
+    if(confirming)return; setConfirming(true); setArrErr("");
+    // posição rápida: reaproveita fix recente; se falhar, usa o último ponto já compartilhado
+    const pos=await new Promise(res=>{
+      if(!navigator.geolocation){ res(live.current.lastPos||null); return; }
+      navigator.geolocation.getCurrentPosition(
+        p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),
+        ()=>res(live.current.lastPos||null),
+        {enableHighAccuracy:true,maximumAge:12000,timeout:8000});
+    });
+    if(!pos){ setArrErr("Não consegui confirmar pelo GPS agora. Tente de novo em alguns segundos."); setConfirming(false); return; }
+    const dst=haversine(pos.lat,pos.lng,cfg.lat,cfg.lng);
+    if(dst>cfg.radius){ setArrErr(`Você ainda está a ${fmtDist(dst)} do galpão. Chegue mais perto e tente de novo.`); setConfirming(false); return; }
+    let a=live.current.assign; if(!a||!a.found) a=await lookupAssign(live.current.cycle,live.current.route);
+    if(a&&a.found){ live.current.onda=a.onda; live.current.vaga=a.gaiola; live.current.senha=a.senha; }
+    live.current.arrTs=Date.now(); if(!live.current.raioTs) live.current.raioTs=Date.now();
+    const arrivedRec={sid:live.current.sid,name:live.current.name,carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle,status:"chegou",dist:Math.round(dst),eta:0,lat:pos.lat,lng:pos.lng,onda:(a&&a.found)?a.onda:"",vaga:(a&&a.found)?a.gaiola:"",senha:(a&&a.found)?a.senha:"",event:"arrived"};
+    fbOnline();                                    // reconecta (pode estar offline por estar parado no raio)
+    try{ await live2fb(arrivedRec); }catch(e){}    // Firebase (aguarda gravar antes de desligar)
+    live.current.arrived=true;
+    stopLive(true);                                // pausa o GPS (mantém a sessão)
+    fbOffline();                                   // solta a conexão (libera espaço no limite gratuito)
+    setArrived(true); setConfirming(false); persistSession({arrived:true});
+    if(a&&a.found){ setAssign(a); setAssignLoad(false); }
+    else {
+      setAssign(null); setAssignLoad(true);
+      lookupAssignRetry(live.current.cycle,live.current.route).then(d=>{
+        setAssign(d||{found:false}); setAssignLoad(false);
+        if(d&&d.found){ live.current.onda=d.onda; live.current.vaga=d.gaiola; live.current.senha=d.senha;
+          if(fbDB){ fbOnline(); fbDB.ref("ativos/"+live.current.sid).update({onda:d.onda,vaga:d.gaiola,senha:d.senha}); fbDB.ref("historico/"+todayStr()+"/"+live.current.sid).update({onda:d.onda}); setTimeout(()=>fbOffline(),2000); } }
+      });
+    }
+  };
+
+  // retoma a sessão se a página recarregou/atualizou no mesmo dia
+  useEffect(()=>{
+    const s=sget("session");
+    if(!s) return;
+    if(s.day!==new Date().toDateString()){ clearSession(); return; }
+    live.current.sid=s.sid; live.current.name=s.name; live.current.carrier=s.carrier; live.current.route=s.route; live.current.cycle=s.cycle;
+    live.current.checkinTs=s.checkinTs||null; live.current.raioTs=s.raioTs||null; live.current.arrTs=s.arrTs||null; live.current.saidaTs=s.saidaTs||null;
+    live.current.ackChamado=s.ackChamado||0; live.current.lastCalledTs=s.calledTs||null; if(s.calledTs) setCallInfo({ts:s.calledTs});
+    setName(s.name); setCarrier(s.carrier); setRoute(s.route); setCycle(s.cycle);
+    setResumed(true);
+    if(s.departed){
+      live.current.departed=true; live.current.arrived=false;
+      setSent({sid:s.sid,name:s.name,carrier:s.carrier,route:s.route,cycle:s.cycle,status:"saiu",dist:null,eta:0});
+      setDeparted(true); fbOffline();
+    } else if(s.arrived){
+      live.current.arrived=true; live.current.departed=false;
+      setSent({sid:s.sid,name:s.name,carrier:s.carrier,route:s.route,cycle:s.cycle,status:"chegou",dist:null,eta:0});
+      setArrived(true); setLiveInfo({dist:null,eta:0,inside:true,at:Date.now()});
+      if(s.galpao){ live.current.galpao=true; live.current.galpaoTs=s.galpaoTs||null; setInGalpao(true); }
+      fetchAssign(s.cycle,s.route); fbOffline();
+      lookupAssignRetry(s.cycle,s.route).then(a=>{ if(a&&a.found){ live.current.onda=a.onda; live.current.vaga=a.gaiola; live.current.senha=a.senha; if(fbDB){ fbOnline(); fbDB.ref("ativos/"+s.sid).update({onda:a.onda,vaga:a.gaiola,senha:a.senha}); fbDB.ref("historico/"+todayStr()+"/"+s.sid).update({onda:a.onda}); setTimeout(()=>fbOffline(),2000); } } });
+    } else {
+      live.current.arrived=false; live.current.departed=false;
+      setSent({sid:s.sid,name:s.name,carrier:s.carrier,route:s.route,cycle:s.cycle,status:"a_caminho",dist:null,eta:null});
+      startWatch();
+    }
+  },[]);
+  // escuta a chamada da coordenação enquanto o motorista está no pátio aguardando
+  useEffect(()=>{
+    if(!fbDB || !arrived || inGalpao || departed || !live.current.sid) return;
+    fbOnline();
+    const ref=fbDB.ref("ativos/"+live.current.sid+"/chamado");
+    const h=ref.on("value",snap=>{
+      const ts=num(snap.val())||0;
+      if(ts && ts>(live.current.ackChamado||0) && ts>((live.current.lastCalledTs||0))){
+        live.current.lastCalledTs=ts;
+        setCalled(ts); setCallInfo({ts}); triggerCallFX();
+        persistSession({calledTs:ts});
+      } else if(ts && ts>((live.current.lastCalledTs||0))){
+        live.current.lastCalledTs=ts; setCallInfo({ts}); persistSession({calledTs:ts});
+      }
+    });
+    live.current.callRef=ref; live.current.callHandler=h;
+    return ()=>{ try{ref.off("value",h);}catch(e){} live.current.callRef=null; live.current.callHandler=null; if(!live.current.watchId) fbOffline(); };
+  },[arrived,inGalpao,departed]);
+
+  const ackCall=()=>{ const ts=called||live.current.lastCalledTs||Date.now(); live.current.ackChamado=ts; setCalled(null); persistSession(); };
+
+  // re-busca a vaga/onda/senha sozinho (sem o motorista precisar atualizar a tela)
+  useEffect(()=>{
+    if(!arrived || departed) return;
+    if(live.current.cycle==="AMB") return;
+    if(assign && assign.found) return;
+    let dead=false, tries=0;
+    const tick=async()=>{
+      if(dead) return; tries++;
+      let d=null; try{ d=await lookupAssign(live.current.cycle,live.current.route); }catch(e){}
+      if(dead) return;
+      if(d && d.found){
+        live.current.onda=d.onda; live.current.vaga=d.gaiola; live.current.senha=d.senha;
+        setAssign(d); setAssignLoad(false);
+        if(fbDB){ fbOnline(); try{ fbDB.ref("ativos/"+live.current.sid).update({onda:d.onda,vaga:d.gaiola,senha:d.senha}); fbDB.ref("historico/"+todayStr()+"/"+live.current.sid).update({onda:d.onda}); }catch(e){} if(!live.current.watchId && !(arrived&&!inGalpao&&!departed)) setTimeout(()=>fbOffline(),2000); }
+      } else if(tries<60){ setTimeout(tick,5000); }
+    };
+    const t=setTimeout(tick,1500);
+    return ()=>{ dead=true; clearTimeout(t); };
+  },[arrived,departed,assign]);
+
+  const getPos=()=>new Promise((res,rej)=>{
+    if(!navigator.geolocation){rej(new Error("nogeo"));return;}
+    navigator.geolocation.getCurrentPosition(
+      p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
+      rej,{enableHighAccuracy:true,timeout:12000,maximumAge:5000});
+  });
+
+  const submit=async()=>{
+    if(!name.trim()||!carrier||!route.trim()||!cycle||sending)return;
+    setSending(true); setErr("");
+    let p=pos;
+    if(!p){
+      setGeo("loading");
+      try{ p=await getPos(); setGeo("ok"); }
+      catch(e){ setSending(false); setGeo("error"); setErr(e&&e.code===1?"Você precisa permitir o acesso à localização para enviar.":"Não consegui pegar o GPS. Use o modo manual abaixo."); setManual(true); return; }
+    }
+    const dst=haversine(p.lat,p.lng,cfg.lat,cfg.lng), ins=dst<=cfg.radius;
+    const e2=etaStraight(dst);
+    const sid="s"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const rec={sid,name:name.trim(),carrier,route:route.trim(),cycle,status:ins?"chegou":"a_caminho",dist:Math.round(dst),eta:e2,lat:p.lat,lng:p.lng,event:"checkin"};
+    live.current.lastPos={lat:p.lat,lng:p.lng};
+    live.current.checkinTs=Date.now(); live.current.raioTs=ins?Date.now():null; live.current.arrTs=null; live.current.saidaTs=null;
+    live2fb(rec);                 // Firebase (estado ao vivo + histórico)
+    setSending(false); setSent(rec); setNavOpen(true); startLive(sid);
+    // pré-carrega a vaga em segundo plano pra a tela de chegada abrir na hora
+    live.current.onda=null; live.current.vaga=null; live.current.senha=null; live.current.assign=null;
+    lookupAssign(cycle,route).then(a=>{ live.current.assign=a; if(a&&a.found){ live.current.onda=a.onda; live.current.vaga=a.gaiola; live.current.senha=a.senha; } });
+  };
+
+  if(sent){
+    const ok=(liveInfo?liveInfo.inside:sent.status==="chegou"); const curEta=liveInfo?liveInfo.eta:sent.eta;
+    const cm=cyMeta(sent.cycle); const canNew = departed || cm.amb || !cm.end || nowMin()>=toMin(cm.end);
+    const enroute = !arrived && !departed;
+    if(enroute){
+      const resetNew=()=>{stopLive();live.current.arrived=false;live.current.departed=false;live.current.galpao=false;setInGalpao(false);setSent(null);setPos(null);setGeo("idle");setName("");setCarrier("");setRoute("");setCycle("");setLiveInfo(null);setMyPos(null);setResumed(false);setArrived(false);setArrErr("");setConfirming(false);setDeparted(false);setAssign(null);setNavOpen(true);};
+      const arrTime=curEta?new Date(Date.now()+curEta*60000):null;
+      const arrStr=arrTime?`${String(arrTime.getHours()).padStart(2,"0")}:${String(arrTime.getMinutes()).padStart(2,"0")}`:"--:--";
+      const distNow=liveInfo?liveInfo.dist:null;
+      if(!navOpen){
+        return (<div style={{animation:"slideup .25s ease"}}>
+          <div style={{...card,textAlign:"center",padding:"26px 22px"}}>
+            <div style={{width:64,height:64,borderRadius:"50%",margin:"0 auto",background:ok?C.green:C.orange,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,color:"#fff"}}>{ok?"✓":"→"}</div>
+            <div style={{fontWeight:800,fontSize:19,marginTop:12}}>{ok?"Você chegou ao pátio!":"A caminho do CD"}</div>
+            <div style={{color:C.dim,fontSize:13.5,marginTop:5}}>{sent.name} · {sent.carrier}</div>
+            <div style={{color:C.dim,fontSize:12.5,marginTop:2}}>Gaiola {sent.route} · Ciclo {sent.cycle}</div>
+            {!ok && <div style={{marginTop:14,display:"flex",gap:10,justifyContent:"center"}}>
+              <div style={{...card,flex:1,maxWidth:130,padding:"10px",background:"#fafafa"}}><div style={{fontSize:10,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>Distância</div><div style={{fontSize:18,fontWeight:800,color:C.blue}}>{distNow!=null?fmtDist(distNow):"—"}</div></div>
+              <div style={{...card,flex:1,maxWidth:130,padding:"10px",background:"#fafafa"}}><div style={{fontSize:10,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>Chega ~</div><div style={{fontSize:18,fontWeight:800,color:C.orange}}>{curEta?curEta+" min":"—"}</div></div>
+            </div>}
+            <button onClick={()=>setNavOpen(true)} style={{...btnBlue,marginTop:16}}>🧭 Abrir navegação</button>
+            <button onClick={confirmArrival} disabled={confirming} style={{...btnGreen,marginTop:10}}>{confirming?"Confirmando…":"✓ JÁ CHEGUEI NO GALPÃO"}</button>
+            {arrErr && <div style={{color:C.orange,fontSize:13,marginTop:8,fontWeight:700}}>{arrErr}</div>}
+            <div style={{marginTop:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:(ok||liveOn)?C.green:C.faint,fontSize:11.5,fontWeight:700}}><span style={{width:8,height:8,borderRadius:"50%",background:(ok||liveOn)?C.green:C.faint,animation:(!ok&&liveOn)?"blink 1.4s infinite":"none"}}></span>{ok?"No pátio · confirme a chegada":(liveOn?"Enviando localização ao vivo":"Localização pausada")}</div>
+          </div>
+          <div style={{textAlign:"center",marginTop:12}}><button onClick={()=>setEditing(true)} style={linkBtn}>✏️ Modificar dados (ciclo, transportadora, gaiola)</button></div>
+          {editing && <EditModal cur={{name:(sent?sent.name:live.current.name),carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle}} onSave={applyEdit} onClose={()=>setEditing(false)}/>}
+        </div>);
+      }
+      return ReactDOM.createPortal((<div style={{position:"fixed",inset:0,zIndex:99999,background:"#dfe4ea"}}>
+        <NavMap cfg={cfg} my={myPos} dist={distNow} eta={curEta} ok={ok}/>
+        <button onClick={()=>setNavOpen(false)} aria-label="Fechar mapa" style={{position:"absolute",top:"calc(env(safe-area-inset-top, 0px) + 10px)",right:12,width:38,height:38,borderRadius:"50%",border:"none",background:"rgba(255,255,255,.95)",boxShadow:"0 2px 8px rgba(0,0,0,.2)",fontSize:17,fontWeight:800,color:C.dim,cursor:"pointer",zIndex:2}}>✕</button>
+        <div style={{position:"absolute",left:0,right:0,bottom:0,padding:"0 12px calc(env(safe-area-inset-bottom, 0px) + 14px)",zIndex:2}}>
+          {ok ? (
+            <div style={{background:C.green,color:"#fff",borderRadius:18,padding:"16px",boxShadow:"0 6px 20px rgba(0,0,0,.35)",animation:"pop .25s ease"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                <span style={{fontSize:26}}>📍</span>
+                <div><div style={{fontWeight:800,fontSize:17}}>Você chegou ao CD!</div><div style={{fontSize:12.5,opacity:.92}}>Confirme pra receber sua vaga e senha</div></div>
+              </div>
+              <button onClick={confirmArrival} disabled={confirming} style={{width:"100%",border:"none",borderRadius:12,padding:"15px",background:"#fff",color:C.green,fontWeight:800,fontSize:16,cursor:"pointer"}}>{confirming?"Confirmando…":"✓ CONFIRMAR CHEGADA"}</button>
+              {arrErr && <div style={{fontSize:12.5,marginTop:8,fontWeight:700,textAlign:"center"}}>{arrErr}</div>}
+            </div>
+          ) : (<>
+            <div style={{background:"#1c1c1e",color:"#fff",borderRadius:16,padding:"13px 16px",boxShadow:"0 4px 16px rgba(0,0,0,.35)",display:"flex",alignItems:"center",gap:14}}>
+              <div style={{textAlign:"center",minWidth:50}}><div style={{fontSize:24,fontWeight:800,lineHeight:1}}>{curEta||"–"}</div><div style={{fontSize:10,opacity:.8,fontWeight:700,textTransform:"uppercase"}}>min</div></div>
+              <div style={{width:1,height:34,background:"rgba(255,255,255,.25)"}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:18,fontWeight:800,lineHeight:1.1}}>{arrStr}</div>
+                <div style={{fontSize:11.5,opacity:.85,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>chegada prevista{distNow!=null?" · "+fmtDist(distNow):""}</div>
+              </div>
+              <button onClick={confirmArrival} disabled={confirming} style={{border:"none",background:"rgba(255,255,255,.16)",color:"#fff",borderRadius:10,padding:"9px 12px",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Já cheguei</button>
+            </div>
+            {arrErr && <div style={{background:"#fff",color:C.orange,borderRadius:10,padding:"8px 12px",fontSize:12.5,fontWeight:700,textAlign:"center",marginTop:8}}>{arrErr}</div>}
+          </>)}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:10,color:C.dim,fontSize:11.5,fontWeight:700}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:liveOn?C.green:C.faint,animation:liveOn?"blink 1.4s infinite":"none"}}></span>
+            {liveOn?"Enviando ao vivo · mantenha a tela ligada":"Ativando localização…"}
+          </div>
+        </div>
+      </div>), document.body);
+    }
+    return (
+      <div style={{...card,textAlign:"center",padding:"30px 22px",animation:"pop .3s ease"}}>
+        {called && <CallOverlay vaga={(assign&&assign.found&&assign.gaiola)||live.current.vaga} senha={(assign&&assign.found&&assign.senha)||live.current.senha} onda={(assign&&assign.found&&assign.onda)||live.current.onda} onAck={ackCall}/>}
+        <div style={{width:70,height:70,borderRadius:"50%",margin:"0 auto",background:departed?C.dim:C.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,color:"#fff"}}>{departed?"🚪":"✓"}</div>
+        <div style={{fontWeight:800,fontSize:20,marginTop:14}}>{departed?"Saída registrada":"Você chegou ao pátio!"}</div>
+        <div style={{color:C.dim,fontSize:14,marginTop:6}}>{sent.name} · {sent.carrier}</div>
+        <div style={{color:C.dim,fontSize:13,marginTop:2}}>Gaiola {sent.route} · Ciclo {sent.cycle}</div>
+        {resumed && <div style={{fontSize:12,color:C.blue,fontWeight:700,marginTop:8}}>Sessão retomada — não precisou preencher de novo.</div>}
+        {!ok && !departed && <div style={{marginTop:14,padding:"12px",background:"#fff7f0",borderRadius:8,border:`1px solid ${C.orange}`}}><div style={{fontSize:13,color:C.dim}}>Tempo estimado de chegada</div><div style={{fontWeight:800,fontSize:26,color:C.orange}}>{curEta?`~${curEta} min`:"calculando…"}</div></div>}
+        {!arrived && !departed && <>
+          <button onClick={confirmArrival} disabled={confirming} style={{...btnGreen,marginTop:16}}>{confirming?"Confirmando…":"✓ JÁ CHEGUEI NO GALPÃO"}</button>
+          <div style={{fontSize:11.5,color:C.dim,marginTop:6}}>Aperte quando estiver dentro do pátio. O sistema confere pelo GPS.</div>
+          {arrErr && <div style={{color:C.orange,fontSize:13,marginTop:8,fontWeight:700}}>{arrErr}</div>}
+        </>}
+        {arrived && <div style={{marginTop:16}}>
+          <div style={{padding:"12px 14px",borderRadius:10,background:"#f0fff5",border:`1px solid ${C.green}`,textAlign:"center"}}>
+            <div style={{fontWeight:800,color:C.green,fontSize:15}}>✓ Chegada confirmada</div>
+            <div style={{fontSize:12,color:C.dim,marginTop:2}}>{sent.name} · {sent.cycle} · Gaiola {sent.route}</div>
+          </div>
+          {callInfo && !departed && <div style={{marginTop:10,padding:"14px",borderRadius:12,background:"#eafff1",border:`2px solid ${C.green}`,textAlign:"center",animation:"pop .3s ease"}}>
+            <div style={{fontWeight:800,fontSize:16,color:C.green}}>🔔 Você foi chamado!</div>
+            <div style={{fontSize:12.5,color:C.dim,marginTop:3}}>Chamado às <b>{t2hm(callInfo.ts)}</b> — dirija-se à sua vaga{((assign&&assign.found&&assign.gaiola)||live.current.vaga)?<> <b style={{color:C.blue}}>{String((assign&&assign.found&&assign.gaiola)||live.current.vaga)}</b></>:""}.</div>
+          </div>}
+          {assignLoad && <div style={{...card,marginTop:10,textAlign:"center",color:C.dim,fontSize:13,padding:18}}>Buscando sua vaga…</div>}
+          {assign && assign.found && <div style={{marginTop:12}}>
+            <div style={{background:C.blue,color:"#fff",borderRadius:12,padding:"16px",textAlign:"center",boxShadow:"0 2px 8px rgba(52,131,250,.3)"}}>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:1,opacity:.85,textTransform:"uppercase"}}>Sua vaga</div>
+              <div style={{fontSize:46,fontWeight:800,lineHeight:1.05,marginTop:2}}>{String(assign.gaiola||"—")}</div>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:10}}>
+              <div style={{...card,flex:1,textAlign:"center",padding:"14px 8px"}}><div style={{fontSize:10.5,color:C.dim,fontWeight:700,textTransform:"uppercase"}}>Onda</div><div style={{fontSize:24,fontWeight:800,marginTop:2}}>{String(assign.onda||"—")}</div></div>
+              <div style={{...card,flex:1,textAlign:"center",padding:"14px 8px"}}><div style={{fontSize:10.5,color:C.dim,fontWeight:700,textTransform:"uppercase"}}>Senha</div><div style={{fontSize:24,fontWeight:800,marginTop:2,color:C.blue}}>{String(assign.senha||"—")}</div></div>
+            </div>
+            <div style={{fontSize:11.5,color:C.faint,textAlign:"center",marginTop:10}}>Dirija-se à vaga indicada e aguarde sua senha ser chamada.</div>
+          </div>}
+          {assign && !assign.found && !assignLoad && <div style={{...card,marginTop:10,padding:14,fontSize:13,color:C.dim,borderLeft:`5px solid ${C.orange}`}}>{assign.amb?"Ambulância (estouro de cubagem): procure a coordenação para a sua vaga e senha.":"Não achei a gaiola "+sent.route+" do ciclo "+sent.cycle+" na lista de hoje. Confira se a gaiola e o ciclo estão certos, ou fale com a coordenação."}{!assign.amb && <button onClick={()=>fetchAssign(sent.cycle,sent.route)} style={{...linkBtn,display:"block",marginTop:8}}>↻ Tentar de novo</button>}</div>}
+          {!inGalpao && <>
+            <div style={{marginTop:14,fontSize:11.5,color:C.dim,textAlign:"center",lineHeight:1.5}}>Quando for chamado e <b>entrar no galpão pra carregar</b>, toque em "Saí do pátio".</div>
+            <button onClick={enterGalpao} style={{...btnGreen,marginTop:10}}>🚪 Saí do pátio</button>
+          </>}
+          {inGalpao && <>
+            <div style={{...card,marginTop:14,padding:16,textAlign:"center",borderLeft:`5px solid ${C.blue}`}}>
+              <div style={{fontWeight:800,fontSize:16}}>🏭 Você está no galpão</div>
+              <div style={{fontSize:12.5,color:C.dim,marginTop:4,lineHeight:1.5}}>Carregando. Quando terminar e for embora de verdade, toque em "Saí do galpão". Pode dar a saída de qualquer lugar.</div>
+            </div>
+            <button onClick={manualCheckout} style={{...btnGreen,marginTop:10}}>🚪 Saí do galpão (dar saída)</button>
+          </>}
+          <div style={{textAlign:"center",marginTop:10}}><button onClick={()=>setEditing(true)} style={linkBtn}>✏️ Modificar dados (ciclo, transportadora, gaiola)</button></div>
+        </div>}
+        {departed && <div style={{marginTop:16,padding:"18px 16px",borderRadius:12,background:"#fff",border:`2px solid ${C.green}`,textAlign:"center"}}>
+          <div style={{width:54,height:54,borderRadius:"50%",margin:"0 auto 8px",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,color:"#fff"}}>✓</div>
+          <div style={{fontWeight:800,fontSize:17}}>Saída dada!</div>
+          <div style={{fontSize:12.5,color:C.dim,marginTop:4,lineHeight:1.5}}>Sua saída já está registrada. Mostre este QR na portaria — a operação só bipa para o <b>2º check</b> (conferência).</div>
+          <div style={{marginTop:14,display:"flex",justifyContent:"center"}}><QRCode text={"CPX:"+(sent&&sent.sid?sent.sid:live.current.sid)} size={220}/></div>
+          <div style={{fontSize:12.5,color:C.dim,marginTop:12}}>Vaga <b style={{color:C.blue}}>{String(live.current.vaga||"—")}</b>{live.current.onda?<> · Onda <b>{String(live.current.onda)}</b></>:""} · {sent.name}</div>
+          <div style={{fontSize:11,color:C.faint,marginTop:8}}>Boa viagem! 🚚</div>
+        </div>}
+        {!arrived && !departed && <div style={{marginTop:16,padding:"12px",borderRadius:8,background:liveOn?"#f0fff5":"#f7f7f7",border:`1px solid ${liveOn?C.green:C.line}`}}>
+          {liveOn ? <><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:C.green,fontWeight:700,fontSize:13}}><span style={{width:9,height:9,borderRadius:"50%",background:C.green,animation:"blink 1.4s infinite"}}></span>Compartilhando localização ao vivo</div><div style={{fontSize:11.5,color:C.dim,marginTop:6}}>Deixe o app aberto até estacionar. Se trocar de app, volte aqui que ele retoma sozinho. Não feche a aba.</div></> : <div style={{fontSize:12.5,color:C.dim}}>Ativando o compartilhamento de localização…</div>}
+        </div>}
+        {canNew
+          ? <button onClick={()=>{stopLive();live.current.arrived=false;live.current.departed=false;live.current.galpao=false;setInGalpao(false);setSent(null);setPos(null);setGeo("idle");setName("");setCarrier("");setRoute("");setCycle("");setLiveInfo(null);setMyPos(null);setResumed(false);setArrived(false);setArrErr("");setConfirming(false);setDeparted(false);setAssign(null);setNavOpen(true);}} style={{...btnBlue,marginTop:18,width:"auto",padding:"12px 26px"}}>Novo check-in</button>
+          : <div style={{marginTop:18,padding:"12px",borderRadius:8,background:"#f7f7f7",border:`1px solid ${C.line}`,fontSize:12.5,color:C.dim}}>Check-in do ciclo <b>{sent.cycle}</b> em andamento. Novo check-in só após <b>{cm.end}</b>.</div>}
+        {editing && <EditModal cur={{name:(sent?sent.name:live.current.name),carrier:live.current.carrier,route:live.current.route,cycle:live.current.cycle}} onSave={applyEdit} onClose={()=>setEditing(false)}/>}
+      </div>
+    );
+  }
+
+  const ready=name.trim()&&carrier&&route.trim()&&cycle;
+  return (
+    <div style={{animation:"slideup .25s ease"}}>
+      <div style={card}>
+        <Field label="Seu nome *"><input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="Nome do motorista"/></Field>
+        <Field label="Transportadora *">
+          <select style={{...inp,appearance:"auto"}} value={carrier} onChange={e=>setCarrier(e.target.value)}>
+            <option value="">Selecione…</option>
+            {CARRIERS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Gaiola *"><input style={{...inp,textTransform:"uppercase"}} value={route} onChange={e=>setRoute(e.target.value.toUpperCase())} placeholder="Ex: A1, B2, C3…"/></Field>
+        <Field label="Ciclo *">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>(
+              <button key={c.k} onClick={()=>setCycle(c.k)} style={{flex:1,padding:"12px 0",borderRadius:8,border:`1.5px solid ${cycle===c.k?c.color:"#d9d9d9"}`,background:cycle===c.k?c.color:"#fff",color:cycle===c.k?"#fff":C.dim,fontWeight:800,fontSize:14,cursor:"pointer"}}>{c.k}</button>
+            ))}
+          </div>
+          <button onClick={()=>setCycle("AMB")} style={{width:"100%",marginTop:8,padding:"12px 0",borderRadius:8,border:`1.5px solid ${cycle==="AMB"?C.red:"#d9d9d9"}`,background:cycle==="AMB"?C.red:"#fff",color:cycle==="AMB"?"#fff":C.dim,fontWeight:800,fontSize:13.5,cursor:"pointer"}}>🚑 Ambulância — estouro de cubagem</button>
+          {cycle && <div style={{fontSize:11,color:C.faint,marginTop:6}}>{cycle==="AMB"?"Ambulância · sob demanda (sem horário fixo)":`Janela do ciclo ${cycle}: ${winStr(cyMeta(cycle))}`}</div>}
+        </Field>
+      </div>
+
+      {geo==="error" && <div style={{color:C.orange,fontSize:13,marginTop:10,fontWeight:600,padding:"0 4px"}}>{err}</div>}
+
+      {manual && (
+        <div style={{...card,marginTop:12,background:"#fafafa"}}>
+          <div style={{fontSize:11,color:C.dim,fontWeight:700,marginBottom:10,textTransform:"uppercase"}}>Modo manual / teste</div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}><input style={inp} value={mLat} onChange={e=>setMLat(e.target.value)} placeholder="lat"/><input style={inp} value={mLng} onChange={e=>setMLng(e.target.value)} placeholder="lng"/><button onClick={useManual} style={{...btnBlue,width:"auto",padding:"0 18px"}}>OK</button></div>
+          <div style={{display:"flex",gap:8}}><button onClick={()=>simulate("perto")} style={{...btnGhost,flex:1}}>Simular PERTO</button><button onClick={()=>simulate("longe")} style={{...btnGhost,flex:1}}>Simular LONGE</button></div>
+        </div>
+      )}
+
+      {pos && (
+        <div style={{...card,marginTop:14,borderLeft:`5px solid ${inside?C.green:C.orange}`,animation:"pop .25s ease"}}>
+          <div style={{fontWeight:800,fontSize:17,color:inside?C.green:C.orange}}>{inside?"✓ Você está no pátio":"Você está fora do raio"}</div>
+          <div style={{fontSize:14,marginTop:6}}>Distância: <b>{fmtDist(dist)}</b></div>
+          {!inside && <div style={{fontSize:14,marginTop:4}}>Tempo estimado: <b>{etaLoad?"calculando…":`~${eta} min`}</b></div>}
+          {pos.acc!=null && <div style={{fontSize:12,color:C.faint,marginTop:3}}>Precisão do GPS: ±{Math.round(pos.acc)} m</div>}
+        </div>
+      )}
+
+      <button onClick={submit} disabled={!ready||sending} style={{...(inside?btnGreen:btnOrange),marginTop:14,opacity:!ready?.45:1}}>{sending?(geo==="loading"?"Localizando…":"Enviando…"):inside?"✓ CONFIRMAR CHEGADA":"🚀 FAZER CHECK-IN"}</button>
+      {!ready && <div style={{textAlign:"center",color:C.faint,fontSize:12,marginTop:8}}>Preencha nome, transportadora, rota e ciclo</div>}
+    </div>
+  );
+}
+
+function Gate({cfg,onOk,k,title,sub}){
+  k=k||_g0; title=title||"Painel restrito"; sub=sub||"Digite a senha.";
+  const [v,setV]=useState(""),[err,setErr]=useState(false);
+  const [ipState,setIpState]=useState(cfg.ipcheck?"checking":"off"); // off | checking | allowed | denied
+  const go=async()=>{ const h=await sha256hex(v); if(h && h===k){onOk();}else{setErr(true);setV("");} };
+  useEffect(()=>{ let dead=false;
+    if(!cfg.ipcheck){setIpState("off");return;}
+    setIpState("checking");
+    fetch(cfg.ipcheck,{cache:"no-store"}).then(r=>r.json()).then(d=>{ if(dead)return;
+      if(d&&d.allowed){ setIpState("allowed"); onOk(); } else setIpState("denied");
+    }).catch(()=>{ if(!dead)setIpState("denied"); });
+    return ()=>{dead=true;};
+  },[cfg.ipcheck]);
+  if(ipState==="checking") return (<div style={{...card,textAlign:"center",padding:"34px 22px"}}><div style={{fontSize:30}}>🛰️</div><div style={{fontWeight:800,fontSize:16,marginTop:10}}>Verificando rede…</div></div>);
+  if(ipState==="allowed") return null;
+  return (<div style={{...card,textAlign:"center",padding:"34px 22px",animation:"slideup .25s ease"}}><div style={{fontSize:34}}>🔒</div><div style={{fontWeight:800,fontSize:18,marginTop:8}}>{title}</div><div style={{color:C.dim,fontSize:13,marginTop:4}}>{ipState==="denied"?"Fora da rede da empresa. Entre com a senha.":sub}</div><input type="password" inputMode="numeric" value={v} onChange={e=>{setV(e.target.value);setErr(false);}} onKeyDown={e=>e.key==="Enter"&&go()} style={{...inp,marginTop:16,textAlign:"center",letterSpacing:6,fontWeight:700,maxWidth:220,marginLeft:"auto",marginRight:"auto"}} placeholder="••••"/>{err && <div style={{color:C.red,fontSize:13,marginTop:8,fontWeight:600}}>Senha incorreta</div>}<button onClick={go} style={{...btnBlue,marginTop:16,width:"auto",padding:"12px 30px"}}>Entrar</button></div>);
+}
+
+/* ============ PAINEL DA TRANSPORTADORA (dispatcher) ============ */
+function DispatcherScreen({cfg}){
+  const [carrier,setCarrier]=useState("");
+  const [cycle,setCycle]=useState("");
+  if(!carrier||!cycle){
+    return (<div style={{animation:"slideup .25s ease",paddingTop:4}}>
+      <div style={{...card,padding:"24px 18px"}}>
+        <div style={{fontSize:30,marginBottom:8}}>🚚</div>
+        <div style={{fontWeight:800,fontSize:19,marginBottom:6}}>Sua transportadora</div>
+        <div style={{fontSize:13,color:C.dim,marginBottom:16,lineHeight:1.5}}>Escolha a <b>transportadora</b> e o <b>ciclo</b> para acompanhar no mapa e ao vivo apenas os seus motoristas.</div>
+        <Field label="Transportadora">
+          <select value={carrier} onChange={e=>setCarrier(e.target.value)} style={{...inp,appearance:"auto"}}>
+            <option value="">Selecione…</option>
+            {CARRIERS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Ciclo">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>(
+              <button key={c.k} onClick={()=>setCycle(c.k)} style={{flex:1,padding:"13px 0",borderRadius:8,border:`1.5px solid ${cycle===c.k?c.color:"#d9d9d9"}`,background:cycle===c.k?c.color:"#fff",color:cycle===c.k?"#fff":C.dim,fontWeight:800,fontSize:14,cursor:"pointer"}}>{c.k}</button>
+            ))}
+          </div>
+        </Field>
+        <div style={{fontSize:11.5,color:C.faint,marginTop:4}}>Selecione os dois para entrar.</div>
+      </div>
+    </div>);
+  }
+  return <PanelScreen cfg={cfg} lockCarrier={carrier} lockCycle={cycle} onChangeCarrier={()=>{setCarrier("");setCycle("");}}/>;
+}
+
+/* ============ PAINEL ============ */
+function PanelScreen({cfg,onSaveCfg,lockCarrier,lockCycle,onChangeCarrier}){
+  const [rows,setRows]=useState([]),[status,setStatus]=useState("loading"),[showCfg,setShowCfg]=useState(false),[loaded,setLoaded]=useState(false);
+  const [view,setView]=useState("vivo"),[carF,setCarF]=useState(""),[cyF,setCyF]=useState(""),[q,setQ]=useState(""),[ondaF,setOndaF]=useState("");
+  const [expected,setExpected]=useState([]),[openCy,setOpenCy]=useState({});
+  const seq=useRef(0),busy=useRef(false);
+  const pull=useCallback(()=>{ fbOnline(); },[]);
+  useEffect(()=>{ if(!fbDB){ setStatus("error"); setLoaded(true); return; } fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>{ setRows(fbRows(snap.val())); setStatus("ok"); setLoaded(true); },()=>{ setStatus("error"); });
+    return ()=>ref.off("value",h);
+  },[]);
+  useEffect(()=>{ if(!cfg.webapp)return; jsonp(cfg.webapp+(cfg.webapp.includes("?")?"&":"?")+"routes=1").then(d=>setExpected(((d&&d.routes)||[]).filter(e=>!carrierHidden(e.carrier)))).catch(()=>{}); },[cfg.webapp]);
+
+  const stOrder={a_caminho:0,chegou:1,saiu:2};
+  const sorted=[...rows].sort((a,b)=>(stOrder[a.status]-stOrder[b.status])||((a.dist??1e12)-(b.dist??1e12)));
+  const carriersPresent=[...new Set(sorted.map(r=>r.carrier).filter(Boolean))].sort();
+  const carFilter = lockCarrier || carF;
+  const cyFilter = lockCycle || cyF;
+  const baseCy = lockCarrier ? sorted.filter(r=>r.carrier===lockCarrier) : sorted;
+  const ciclos=CYCLES.map(c=>c.k).filter(k=>baseCy.some(r=>r.cycle===k));
+  const _ncP=s=>String(s||"").trim().toUpperCase();
+  const ondaMapP={}; expected.forEach(e=>{ if(e.onda!=null&&e.onda!=="") ondaMapP[e.cycle+"|"+_ncP(e.route)]=e.onda; });
+  const ondaNumP=o=>{ const m=String(o==null?"":o).match(/\d+/); return m?parseInt(m[0],10):null; };
+  const ondaOfP=r=>{ let o=r.onda; if(!o) o=ondaMapP[r.cycle+"|"+_ncP(r.route)]; return o||""; };
+  let filtered=sorted; if(carFilter) filtered=filtered.filter(r=>r.carrier===carFilter); if(cyFilter) filtered=filtered.filter(r=>r.cycle===cyFilter); if(ondaF) filtered=filtered.filter(r=>String(ondaNumP(ondaOfP(r)))===ondaF);
+  const ondasDispP=[...new Set([
+      ...sorted.filter(r=>(!carFilter||r.carrier===carFilter)&&(!cyFilter||r.cycle===cyFilter)).map(r=>ondaNumP(ondaOfP(r))),
+      ...expected.filter(e=>(!carFilter||_ncP(e.carrier)===_ncP(carFilter))&&(!cyFilter||e.cycle===cyFilter)).map(e=>ondaNumP(e.onda))
+    ].filter(n=>n!=null))].sort((a,b)=>a-b);
+  const arrived=filtered.filter(c=>c.status==="chegou").length, gone=filtered.filter(c=>c.status==="saiu").length, enroute=filtered.length-arrived-gone;
+  const noGalpao=filtered.filter(c=>c.status==="chegou"&&c.galpao).length, noPatio=arrived-noGalpao;
+  const qn=q.trim().toLowerCase();
+  const shown = qn ? filtered.filter(r=>String(r.vaga||"").toLowerCase().includes(qn)||String(r.route||"").toLowerCase().includes(qn)||String(r.name||"").toLowerCase().includes(qn)) : filtered;
+
+  // rotas que faltam preencher (esperadas na planilha e ainda sem check-in)
+  const checkedSet=new Set(rows.map(r=>r.cycle+"|"+String(r.route||"").trim().toUpperCase()));
+  const _normC=s=>String(s||"").trim().toUpperCase();
+  const pending=expected.filter(e=>!checkedSet.has(e.cycle+"|"+e.route)).filter(e=>(!lockCarrier||_normC(e.carrier)===_normC(lockCarrier))&&(!lockCycle||e.cycle===lockCycle));
+  const expectedScoped=expected.filter(e=>(!lockCarrier||_normC(e.carrier)===_normC(lockCarrier))&&(!lockCycle||e.cycle===lockCycle));
+  const pendByCycle=CYCLES.filter(c=>!c.amb).map(c=>({k:c.k,color:c.color,items:pending.filter(p=>p.cycle===c.k)})).filter(x=>x.items.length);
+  const totalPend=pending.length;
+
+  const Item=({c})=>{ const inside=c.status==="chegou"; const gone=c.status==="saiu"; const cm=cyMeta(c.cycle); const sc=gone?"#999":inside?(c.galpao?C.blue:C.green):C.orange;
+    return (<div style={{...card,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12,borderLeft:`5px solid ${sc}`,opacity:gone?.7:1}}>
+      <span style={{width:11,height:11,borderRadius:"50%",background:carrierColor(c.carrier),flexShrink:0,border:"1px solid #fff",boxShadow:"0 0 2px rgba(0,0,0,.3)"}} title={c.carrier}></span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontWeight:800,fontSize:14.5}}>{c.name}</span><span style={{fontSize:10,fontWeight:800,color:"#fff",background:cm.color,borderRadius:5,padding:"2px 6px"}}>{c.cycle||"—"}</span>{c.vaga && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:C.blue,borderRadius:5,padding:"2px 6px"}}>Gaiola {c.vaga}</span>}</div>
+        <div style={{color:C.dim,fontSize:12,marginTop:2}}>{c.carrier} · Rota {c.route}</div>
+        <div style={{fontSize:11.5,color:C.faint,marginTop:3}}>{fmtDist(c.dist)}{c.status==="a_caminho"&&` · ~${c.eta||etaStraight(c.dist)} min`} · {fmtAgo(c.ts)}</div>
+      </div>
+      <a href={`https://www.google.com/maps?q=${c.lat},${c.lng}`} target="_blank" rel="noopener" style={{fontSize:11,color:C.blue,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>mapa ↗</a>
+      <div style={{fontWeight:800,fontSize:11,textTransform:"uppercase",color:sc,textAlign:"right",whiteSpace:"nowrap",width:60}}>{gone?"saiu":inside?(c.galpao?"no galpão":"no pátio"):"a caminho"}</div>
+    </div>);
+  };
+
+  return (
+    <div style={{animation:"slideup .25s ease"}}>
+      <LiveMap cfg={cfg} drivers={shown}/>
+      {!lockCarrier && carriersPresent.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:"4px 12px",marginTop:8,padding:"0 2px"}}>
+        {carriersPresent.map(t=>(<span key={t} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:C.dim}}><span style={{width:9,height:9,borderRadius:"50%",background:carrierColor(t)}}></span>{t}</span>))}
+      </div>}
+
+      {/* alternador de visão */}
+      <div style={{display:"flex",gap:6,marginTop:12,background:"#fff",padding:4,borderRadius:10,border:`1px solid ${C.line}`}}>
+        {[["vivo","Ao vivo"],["pendentes","Pendentes"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setView(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 3px",borderRadius:7,fontWeight:800,fontSize:12.5,background:view===k?C.blue:"transparent",color:view===k?"#fff":C.dim,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            {l}{k==="pendentes" && <span style={{background:view===k?"rgba(255,255,255,.3)":(totalPend?C.orange:C.green),color:"#fff",borderRadius:9,padding:"0 6px",fontSize:10.5}}>{totalPend}</span>}
+          </button>
+        ))}
+      </div>
+
+      {view!=="pendentes" ? (<>
+        {lockCarrier ? (
+          <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center"}}>
+            <div style={{...inp,padding:"10px",flex:1,minWidth:0,background:"#f3f4f6",display:"flex",alignItems:"center",gap:6}}><span style={{width:9,height:9,borderRadius:"50%",background:carrierColor(lockCarrier),flexShrink:0}}></span><span style={{fontWeight:700,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lockCarrier}</span></div>
+            <div style={{...inp,padding:"10px",width:74,flexShrink:0,background:"#f3f4f6",fontWeight:800,textAlign:"center"}}>{lockCycle}</div>
+            {onChangeCarrier && <button onClick={onChangeCarrier} style={{...linkBtn,flexShrink:0}}>trocar</button>}
+          </div>
+        ) : (
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            <select value={carF} onChange={e=>setCarF(e.target.value)} style={{...inp,appearance:"auto",padding:"10px",flex:1,minWidth:0}}>
+              <option value="">Todas as transportadoras</option>
+              {carriersPresent.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={cyF} onChange={e=>setCyF(e.target.value)} style={{...inp,appearance:"auto",padding:"10px",width:118,flexShrink:0}}>
+              <option value="">Todos ciclos</option>
+              {ciclos.map(k=><option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+        )}
+        {ondasDispP.length>0 && <div style={{display:"flex",gap:6,marginTop:8,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:11.5,fontWeight:800,color:C.dim,marginRight:2}}>Onda:</span>
+          <button onClick={()=>setOndaF("")} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${ondaF===""?C.blue:"#d9d9d9"}`,background:ondaF===""?C.blue:"#fff",color:ondaF===""?"#fff":C.dim,fontWeight:800,fontSize:12,cursor:"pointer"}}>Todas</button>
+          {ondasDispP.map(n=>{const a=ondaF===String(n);return <button key={n} onClick={()=>setOndaF(String(n))} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${a?C.blue:"#d9d9d9"}`,background:a?C.blue:"#fff",color:a?"#fff":C.dim,fontWeight:800,fontSize:12,cursor:"pointer"}}>Onda {n}</button>;})}
+        </div>}
+        <div style={{position:"relative",marginTop:8}}>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar gaiola, rota ou nome…" style={{...inp,padding:"10px 34px 10px 12px",fontSize:14}}/>
+          {q
+            ? <button onClick={()=>setQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",border:"none",background:"none",color:C.faint,fontSize:18,cursor:"pointer",lineHeight:1}}>✕</button>
+            : <span style={{position:"absolute",right:11,top:"50%",transform:"translateY(-50%)",color:C.faint,fontSize:15,pointerEvents:"none"}}>🔍</span>}
+        </div>
+        {qn && <div style={{fontSize:11.5,color:C.dim,margin:"6px 2px 0",fontWeight:600}}>{shown.length} resultado(s) para “{q.trim()}”</div>}
+        <div style={{display:"flex",gap:10,marginTop:10,flexWrap:"wrap"}}>
+          <Stat label="No pátio" value={noPatio} color={C.green}/>
+          <Stat label="No galpão" value={noGalpao} color={C.blue}/>
+          <Stat label="A caminho" value={enroute} color={C.orange}/>
+          <Stat label="Saíram" value={gone} color={C.dim}/>
+        </div>
+      </>) : (
+        <div style={{display:"flex",gap:10,marginTop:10}}>
+          <Stat label="Faltam" value={totalPend} color={totalPend?C.orange:C.green}/>
+          <Stat label="Preenchidas" value={Math.max(0,expectedScoped.length-totalPend)} color={C.green}/>
+          <Stat label="Total rotas" value={expectedScoped.length} color={C.blue}/>
+        </div>
+      )}
+
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",margin:"12px 2px 0"}}>
+        <div style={{fontSize:11,color:C.faint,fontWeight:600}}>{view==="pendentes"?(expected.length?"Comparado com a Consolidado Import":"Lista de rotas não carregada"):(status==="error"?"⚠ Sem conexão com a planilha":status==="ok"?"Ao vivo · atualiza sozinho":"Carregando…")}</div>
+        <div style={{display:"flex",gap:10}}><button onClick={pull} style={linkBtn}>↻ Atualizar</button>{!lockCarrier && onSaveCfg && <button onClick={()=>setShowCfg(s=>!s)} style={linkBtn}>⚙ Config</button>}</div>
+      </div>
+
+      {showCfg && !lockCarrier && <ConfigCard cfg={cfg} onSave={onSaveCfg}/>}
+
+      {view==="pendentes" ? (
+        <div style={{marginTop:12}}>
+          {expected.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:30,fontSize:14}}>Não consegui carregar a lista de rotas da Consolidado Import.</div>}
+          {expected.length>0 && totalPend===0 && <div style={{...card,textAlign:"center",color:C.green,fontWeight:700,padding:26,fontSize:15}}>Tudo preenchido! 🎉</div>}
+          {pendByCycle.map(c=>(
+            <div key={c.k} style={{marginBottom:8}}>
+              <button onClick={()=>setOpenCy(o=>({...o,[c.k]:!o[c.k]}))} style={{...card,width:"100%",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:"12px 14px"}}>
+                <span style={{fontSize:13,color:C.dim}}>{openCy[c.k]?"▾":"▸"}</span>
+                <span style={{width:10,height:10,borderRadius:"50%",background:c.color,flexShrink:0}}></span>
+                <span style={{fontWeight:800,fontSize:14,flex:1,textAlign:"left"}}>Ciclo {c.k}</span>
+                <span style={{background:C.orange,color:"#fff",borderRadius:12,padding:"2px 10px",fontWeight:800,fontSize:12.5}}>{c.items.length}</span>
+              </button>
+              {openCy[c.k] && (()=>{ const byCar={}; c.items.forEach(p=>{const t=p.carrier||"—"; byCar[t]=(byCar[t]||0)+1;}); const carList=Object.entries(byCar).sort((a,b)=>b[1]-a[1]);
+                return (<div style={{marginTop:6}}>
+                  <div style={{...card,padding:"10px 12px",marginBottom:8,background:"#fafafa"}}>
+                    <div style={{fontSize:11,color:C.dim,fontWeight:800,textTransform:"uppercase",marginBottom:8}}>Faltam por transportadora</div>
+                    {carList.map(([t,n])=>(
+                      <div key={t} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderTop:"1px solid #eee"}}>
+                        <span style={{flex:1,minWidth:0,fontSize:13,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t}</span>
+                        <span style={{background:C.orange,color:"#fff",borderRadius:10,padding:"1px 9px",fontWeight:800,fontSize:12}}>{n}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {c.items.map((p,i)=>(
+                    <div key={c.k+p.route+i} style={{...card,padding:"10px 14px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:`5px solid ${C.orange}`}}>
+                      <span style={{fontWeight:800,fontSize:14,minWidth:46}}>{p.route}</span>
+                      <span style={{flex:1,minWidth:0,color:C.dim,fontSize:12.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.carrier||"—"}</span>
+                      <span style={{fontSize:10.5,fontWeight:800,color:C.orange,textTransform:"uppercase"}}>pendente</span>
+                    </div>
+                  ))}
+                </div>);
+              })()}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{marginTop:12}}>
+          {shown.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:30,fontSize:14}}>{qn?"Nada encontrado pra essa busca.":(loaded?"Ninguém nesse filtro.":"Carregando…")}</div>}
+          {shown.map(it=><Item key={it.id} c={it}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chip({active,onClick,color,label,count}){
+  return (<button onClick={onClick} style={{border:`1.5px solid ${active?color:"#d9d9d9"}`,background:active?color:"#fff",color:active?"#fff":C.dim,borderRadius:20,padding:"7px 13px",fontWeight:800,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>{label}<span style={{background:active?"rgba(255,255,255,.3)":"#eee",color:active?"#fff":C.dim,borderRadius:10,padding:"1px 7px",fontSize:11}}>{count}</span></button>);
+}
+function Stat({label,value,color}){return(<div style={{...card,flex:"1 1 70px",minWidth:70,padding:"12px 10px"}}><div style={{fontSize:25,fontWeight:800,color}}>{value}</div><div style={{fontSize:10.5,color:C.dim,fontWeight:600,textTransform:"uppercase"}}>{label}</div></div>);}
+
+function NavMap({cfg,my,dist,eta,ok}){
+  const wrap=useRef(null),map=useRef(null),line=useRef(null),route=useRef(null),prev=useRef(null),head=useRef(null),applied=useRef(0),routePos=useRef(null),sized=useRef(false);
+  useEffect(()=>{ if(!window.L||!wrap.current||map.current)return;
+    const m=window.L.map(wrap.current,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,boxZoom:false,keyboard:false}).setView([cfg.lat,cfg.lng],16);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(m);
+    window.L.circle([cfg.lat,cfg.lng],{radius:cfg.radius,color:C.green,fillColor:C.green,fillOpacity:.15,weight:2}).addTo(m);
+    window.L.marker([cfg.lat,cfg.lng],{icon:window.L.divIcon({className:"",iconSize:[44,40],iconAnchor:[22,36],html:`<div style="display:flex;flex-direction:column;align-items:center"><div style="background:${C.green};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:2px 7px;box-shadow:0 1px 3px rgba(0,0,0,.35)">CD</div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${C.green};margin-top:-1px"></div></div>`})}).addTo(m);
+    map.current=m; setTimeout(()=>m.invalidateSize(),250);
+  },[]);
+  useEffect(()=>{ const m=map.current; if(!m||!my)return;
+    if(!sized.current){ m.invalidateSize(); sized.current=true; }
+    const ll=[my.lat,my.lng]; m.panTo(ll,{animate:true,duration:1});
+    if(line.current)line.current.remove();
+    line.current=window.L.polyline([ll,[cfg.lat,cfg.lng]],{color:"#9cc3ff",weight:4,dashArray:"3 10",opacity:.7}).addTo(m);
+    const p=prev.current; let hd=null;
+    if(p){ const d=haversine(p.lat,p.lng,my.lat,my.lng); if(d>4) hd=bearing(p,my); }
+    if(hd==null) hd = head.current!=null?head.current:bearing(my,{lat:cfg.lat,lng:cfg.lng});
+    head.current=hd; prev.current=my;
+    let target=-hd, pa=applied.current; while(target-pa>180)target-=360; while(target-pa<-180)target+=360; applied.current=target;
+    if(wrap.current) wrap.current.style.transform=`rotate(${target}deg)`;
+    // recalcula a rota na 1ª vez e sempre que andar >150m (acompanha mudança de rua)
+    const rp=routePos.current;
+    if(!rp || haversine(rp.lat,rp.lng,my.lat,my.lng)>150){ routePos.current={lat:my.lat,lng:my.lng};
+      fetch(`https://router.project-osrm.org/route/v1/driving/${my.lng},${my.lat};${cfg.lng},${cfg.lat}?overview=full&geometries=geojson`).then(r=>r.json()).then(d=>{const c=d&&d.routes&&d.routes[0]&&d.routes[0].geometry&&d.routes[0].geometry.coordinates; if(c&&map.current){const pts=c.map(q=>[q[1],q[0]]); if(route.current)route.current.remove(); route.current=window.L.polyline(pts,{color:C.blue,weight:7,opacity:.9,lineJoin:"round",lineCap:"round"}).addTo(map.current);} }).catch(()=>{});
+    }
+  },[my]);
+  useEffect(()=>()=>{ if(map.current){map.current.remove();map.current=null;} },[]);
+  const zoomBy=d=>{ const m=map.current; if(m) m.setZoom(Math.max(11,Math.min(19,m.getZoom()+d))); };
+
+  const arr = eta? new Date(Date.now()+eta*60000):null;
+  const arrStr = arr? `${String(arr.getHours()).padStart(2,"0")}:${String(arr.getMinutes()).padStart(2,"0")}`:"--:--";
+  return (<div style={{position:"absolute",inset:0,overflow:"hidden",background:"#dfe4ea"}}>
+    <div ref={wrap} style={{position:"absolute",inset:"-45%",transformOrigin:"50% 50%",transition:"transform .6s ease"}}/>
+    <div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
+      <svg width="46" height="46" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill={ok?C.green:C.blue} opacity="0.18"/><path d="M20 6 L31 32 L20 26 L9 32 Z" fill={ok?C.green:C.blue} stroke="#fff" strokeWidth="2.2" strokeLinejoin="round"/></svg>
+    </div>
+    <div style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",display:"flex",flexDirection:"column",gap:10,zIndex:6}}>
+      <button onClick={()=>zoomBy(1)} style={{width:46,height:46,borderRadius:23,border:"none",background:"rgba(255,255,255,.96)",boxShadow:"0 2px 8px rgba(0,0,0,.2)",fontSize:26,fontWeight:700,color:"#333",cursor:"pointer",lineHeight:1}}>+</button>
+      <button onClick={()=>zoomBy(-1)} style={{width:46,height:46,borderRadius:23,border:"none",background:"rgba(255,255,255,.96)",boxShadow:"0 2px 8px rgba(0,0,0,.2)",fontSize:30,fontWeight:700,color:"#333",cursor:"pointer",lineHeight:1}}>−</button>
+    </div>
+    <div style={{position:"absolute",top:"calc(env(safe-area-inset-top, 0px) + 12px)",left:12,right:12,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
+      <div style={{background:"rgba(255,255,255,.96)",borderRadius:30,padding:"9px 16px",boxShadow:"0 2px 8px rgba(0,0,0,.16)",display:"flex",alignItems:"center",gap:8,maxWidth:"100%"}}>
+        <span style={{fontSize:15}}>{ok?"📍":"🧭"}</span>
+        <span style={{fontWeight:800,fontSize:13.5,whiteSpace:"nowrap"}}>{ok?"Você chegou ao CD":"Indo para o CD"}</span>
+        {dist!=null&&<span style={{fontSize:13,fontWeight:800,color:ok?C.green:C.blue}}>{fmtDist(dist)}</span>}
+      </div>
+    </div>
+  </div>);
+}
+
+function LiveMap({cfg,drivers}){
+  const ref=useRef(null),map=useRef(null),markers=useRef({}),yard=useRef(null),ring=useRef(null);
+  useEffect(()=>{ if(!window.L||!ref.current||map.current)return;
+    const m=window.L.map(ref.current,{zoomControl:true,attributionControl:false}).setView([cfg.lat,cfg.lng],13);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(m);
+    const yIcon=window.L.divIcon({className:"",iconSize:[20,20],html:`<div style="background:${C.yellow};width:18px;height:18px;border-radius:4px;border:2px solid #333"></div>`});
+    yard.current=window.L.marker([cfg.lat,cfg.lng],{icon:yIcon}).addTo(m).bindPopup(cfg.yardName);
+    ring.current=window.L.circle([cfg.lat,cfg.lng],{radius:cfg.radius,color:C.green,fillColor:C.green,fillOpacity:.08,weight:1.5}).addTo(m);
+    map.current=m; setTimeout(()=>m.invalidateSize(),250);
+  },[]);
+  useEffect(()=>{ if(ring.current){ring.current.setLatLng([cfg.lat,cfg.lng]);ring.current.setRadius(cfg.radius);} if(yard.current)yard.current.setLatLng([cfg.lat,cfg.lng]); },[cfg.lat,cfg.lng,cfg.radius]);
+  useEffect(()=>{ const m=map.current; if(!m||!window.L)return; const seen={};
+    drivers.forEach(d=>{ if(isNaN(d.lat)||isNaN(d.lng))return; seen[d.id]=1;
+      const color=carrierColor(d.carrier); const op=d.status==="saiu"?.4:1; const bd=d.status==="chegou"?C.green:d.status==="saiu"?"#999":"#fff";
+      const icon=window.L.divIcon({className:"",iconSize:[18,18],html:`<div style="background:${color};opacity:${op};width:14px;height:14px;border-radius:50%;border:2px solid ${bd};box-shadow:0 0 4px rgba(0,0,0,.4)"></div>`});
+      const popup=`<b>${d.name}</b> <span style="background:${cyMeta(d.cycle).color};color:#fff;border-radius:4px;padding:1px 5px;font-size:10px">${d.cycle||"—"}</span><br>${d.carrier}<br>Rota: ${d.route||"-"}<br>${d.status==="saiu"?"🚪 Saiu do pátio":d.status==="chegou"?(d.galpao?"🏭 No galpão":"✓ No pátio"):"A caminho · ~"+(d.eta||etaStraight(d.dist))+" min"}`;
+      if(markers.current[d.id]){markers.current[d.id].setLatLng([d.lat,d.lng]).setIcon(icon);markers.current[d.id].setPopupContent(popup);}
+      else{markers.current[d.id]=window.L.marker([d.lat,d.lng],{icon}).addTo(m).bindPopup(popup);}
+    });
+    Object.keys(markers.current).forEach(id=>{ if(!seen[id]){m.removeLayer(markers.current[id]);delete markers.current[id];} });
+  },[drivers]);
+  return <div ref={ref} style={{height:320,borderRadius:10,overflow:"hidden",border:`1px solid ${C.line}`,boxShadow:"0 1px 3px rgba(0,0,0,.06)"}}/>;
+}
+
+function ConfigCard({cfg,onSave}){
+  const [d,setD]=useState(cfg),[msg,setMsg]=useState("");
+  useEffect(()=>setD(cfg),[cfg]);
+  const useHere=()=>{if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(p=>setD(s=>({...s,lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)})),()=>setMsg("Falha ao pegar localização."),{enableHighAccuracy:true});};
+  const save=()=>{onSave({...d,lat:+d.lat,lng:+d.lng,radius:+d.radius,webapp:(d.webapp||"").trim(),ipcheck:(d.ipcheck||"").trim(),gpsSec:Math.max(3,+d.gpsSec||8),pollSec:Math.max(3,+d.pollSec||8)});setMsg("✓ Salvo!");setTimeout(()=>setMsg(""),2000);};
+  return (<div style={{...card,marginTop:12,background:"#fafafa"}}><div style={{fontWeight:800,fontSize:14,marginBottom:8}}>Configuração</div><Field label="Nome do pátio"><input style={inp} value={d.yardName} onChange={e=>setD({...d,yardName:e.target.value})}/></Field><div style={{display:"flex",gap:10}}><Field label="Latitude"><input style={inp} value={d.lat} onChange={e=>setD({...d,lat:e.target.value})}/></Field><Field label="Longitude"><input style={inp} value={d.lng} onChange={e=>setD({...d,lng:e.target.value})}/></Field></div><button onClick={useHere} style={{...btnGhost,marginBottom:12}}>📍 Usar minha localização atual</button><Field label={`Raio da cerca: ${d.radius} m`}><input type="range" min="50" max="2000" step="50" value={d.radius} onChange={e=>setD({...d,radius:e.target.value})} style={{width:"100%",accentColor:C.blue}}/></Field><div style={{display:"flex",gap:10}}><Field label="GPS do motorista (s)"><input style={inp} type="number" min="3" value={d.gpsSec==null?8:d.gpsSec} onChange={e=>setD({...d,gpsSec:e.target.value})}/></Field><Field label="Atualização do painel (s)"><input style={inp} type="number" min="3" value={d.pollSec==null?8:d.pollSec} onChange={e=>setD({...d,pollSec:e.target.value})}/></Field></div><div style={{fontSize:11,color:C.faint,margin:"-4px 2px 12px"}}>Menor = mais ao vivo, mas gasta mais bateria e carrega mais o servidor. Recomendado 5–8s.</div><Field label="URL do Google (Apps Script)"><input style={inp} value={d.webapp||""} onChange={e=>setD({...d,webapp:e.target.value})}/></Field><Field label="Verificação de IP (opcional — libera o painel só na rede do CD)"><input style={inp} value={d.ipcheck||""} onChange={e=>setD({...d,ipcheck:e.target.value})} placeholder="URL do Worker verifica-ip"/></Field><button onClick={save} style={btnBlue}>Salvar</button>{msg && <div style={{color:C.green,fontWeight:700,fontSize:13,marginTop:8,textAlign:"center"}}>{msg}</div>}</div>);
+}
+
+function Field({label,children}){return(<div style={{marginBottom:12,flex:1}}><div style={{fontSize:11.5,color:C.dim,fontWeight:700,marginBottom:6}}>{label}</div>{children}</div>);}
+const card={background:C.card,border:`1px solid ${C.line}`,borderRadius:10,padding:16,boxShadow:"0 1px 3px rgba(0,0,0,.06)"};
+const inp={width:"100%",background:"#fff",border:"1px solid #d9d9d9",borderRadius:6,color:C.text,padding:"12px",fontSize:15,outline:"none"};
+const btnBase={width:"100%",border:"none",borderRadius:8,padding:"14px 0",fontSize:15,fontWeight:800,cursor:"pointer",letterSpacing:.3};
+const btnYellow={...btnBase,background:C.yellow,color:C.text};
+const btnBlue={...btnBase,background:C.blue,color:"#fff"};
+const btnGreen={...btnBase,background:C.green,color:"#fff"};
+const btnOrange={...btnBase,background:C.orange,color:"#fff"};
+const btnGhost={...btnBase,background:"#fff",color:C.blue,border:`1.5px solid ${C.blue}`,padding:"11px 0",fontSize:13};
+const linkBtn={background:"transparent",border:"none",color:C.blue,fontWeight:700,fontSize:12,cursor:"pointer"};
+
+/* ============ MODIFICAR DADOS DO CHECK-IN (mesma sessão) ============ */
+function EditModal({cur,onSave,onClose}){
+  const [carrier,setCarrier]=useState(cur.carrier||"");
+  const [route,setRoute]=useState(cur.route||"");
+  const [cycle,setCycle]=useState(cur.cycle||"");
+  const [saving,setSaving]=useState(false);
+  const ready=carrier&&route.trim()&&cycle;
+  const save=async()=>{ if(!ready||saving)return; setSaving(true); try{ await onSave({carrier,route:route.trim().toUpperCase(),cycle}); }catch(e){} setSaving(false); };
+  return ReactDOM.createPortal((
+    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:100000,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",width:"100%",maxWidth:600,borderRadius:"18px 18px 0 0",padding:"18px 18px calc(env(safe-area-inset-bottom,0px) + 18px)",maxHeight:"90vh",overflowY:"auto",animation:"slideup .2s ease"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <div style={{fontWeight:800,fontSize:18}}>Modificar dados</div>
+          <button onClick={onClose} style={{border:"none",background:"none",fontSize:20,color:C.faint,cursor:"pointer"}}>✕</button>
+        </div>
+        <div style={{fontSize:12.5,color:C.dim,marginBottom:14}}>Corrija o ciclo, a transportadora ou a gaiola. Seu nome e o horário do check-in não mudam — a vaga/onda/senha são recalculadas.</div>
+        <Field label="Motorista"><input style={{...inp,background:"#f3f4f6",color:C.dim}} value={cur.name||""} disabled/></Field>
+        <Field label="Transportadora *">
+          <select style={{...inp,appearance:"auto"}} value={carrier} onChange={e=>setCarrier(e.target.value)}>
+            <option value="">Selecione…</option>
+            {CARRIERS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Gaiola *"><input style={{...inp,textTransform:"uppercase"}} value={route} onChange={e=>setRoute(e.target.value.toUpperCase())} placeholder="Ex: A1, B2, C3…"/></Field>
+        <Field label="Ciclo *">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>(
+              <button key={c.k} onClick={()=>setCycle(c.k)} style={{flex:1,padding:"12px 0",borderRadius:8,border:`1.5px solid ${cycle===c.k?c.color:"#d9d9d9"}`,background:cycle===c.k?c.color:"#fff",color:cycle===c.k?"#fff":C.dim,fontWeight:800,fontSize:14,cursor:"pointer"}}>{c.k}</button>
+            ))}
+          </div>
+          <button onClick={()=>setCycle("AMB")} style={{width:"100%",marginTop:8,padding:"12px 0",borderRadius:8,border:`1.5px solid ${cycle==="AMB"?C.red:"#d9d9d9"}`,background:cycle==="AMB"?C.red:"#fff",color:cycle==="AMB"?"#fff":C.dim,fontWeight:800,fontSize:13.5,cursor:"pointer"}}>🚑 Ambulância — estouro de cubagem</button>
+          {cycle && <div style={{fontSize:11,color:C.faint,marginTop:6}}>{cycle==="AMB"?"Ambulância · sob demanda (sem horário fixo)":`Janela do ciclo ${cycle}: ${winStr(cyMeta(cycle))}`}</div>}
+        </Field>
+        <button onClick={save} disabled={!ready||saving} style={{...btnBlue,marginTop:8,opacity:!ready?.5:1}}>{saving?"Salvando…":"Salvar alterações"}</button>
+      </div>
+    </div>
+  ), document.body);
+}
+
+/* ============ ATRASOS (dispatcher) ============ */
+function DelaysScreen({cfg}){
+  const [rows,setRows]=useState([]),[loaded,setLoaded]=useState(false),[view,setView]=useState("justificar"),[carF,setCarF]=useState(""),[cycF,setCycF]=useState(""),[jSub,setJSub]=useState("pend");
+  const seq=useRef(0),busy=useRef(false);
+  const pull=useCallback(()=>{ fbOnline(); },[]);
+  useEffect(()=>{ if(!fbDB){ setLoaded(true); return; } fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>{ setRows(fbRows(snap.val())); setLoaded(true); });
+    return ()=>ref.off("value",h);
+  },[]);
+
+  // só chegados, com meta de horário
+  const chegados=rows.filter(r=>(r.status==="chegou"||r.status==="saiu")&&r.arrTs);
+  const comInfo=chegados.map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.meta!=null);
+  const atrasados=comInfo.filter(r=>r.d.late);
+  // motoristas ainda a caminho, mas já passou o horário-corte → atrasados (em rota)
+  const emRota=rows.filter(r=>r.status==="a_caminho").map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.overdue);
+  const transportadoras=[...new Set([...comInfo,...emRota].map(r=>r.carrier).filter(Boolean))].sort();
+  const ciclos=[...new Set([...comInfo,...emRota].map(r=>r.cycle).filter(Boolean))].sort();
+  const matchF=r=>(!carF||r.carrier===carF)&&(!cycF||r.cycle===cycF);
+  const atrasadosF = atrasados.filter(matchF);
+  const emRotaF = emRota.filter(matchF);
+  // em rota + chegados atrasados, sem repetir o mesmo motorista (mesmo sid)
+  const _seen={}; const listaJust = [...emRotaF, ...atrasadosF].filter(r=>{ if(_seen[r.id]) return false; _seen[r.id]=true; return true; });
+  const pendList = listaJust.filter(r=>!r.justif);
+  const justList = listaJust.filter(r=>r.justif);
+
+
+  // resumo por ciclo
+  const porCiclo=CYCLES.filter(c=>!c.amb).map(c=>{
+    const itens=comInfo.filter(r=>r.cycle===c.k);
+    const late=itens.filter(r=>r.d.status==="atrasado");
+    const antec=itens.filter(r=>r.d.status==="antecipado");
+    const somaAtraso=late.reduce((a,r)=>a+r.d.lateMin,0);
+    return { k:c.k, color:c.color, total:itens.length, atras:late.length, antec:antec.length, ok:itens.length-late.length-antec.length, mediaAtraso: late.length?Math.round(somaAtraso/late.length):0 };
+  }).filter(x=>x.total>0);
+
+  // pontualidade por transportadora
+  const mapaT={};
+  comInfo.forEach(r=>{ const t=r.carrier||"—"; (mapaT[t]=mapaT[t]||{total:0,ok:0,antec:0,somaAtraso:0,nome:t}); mapaT[t].total++; if(r.d.status==="atrasado"){mapaT[t].somaAtraso+=r.d.lateMin;} else if(r.d.status==="antecipado"){mapaT[t].antec++;} else mapaT[t].ok++; });
+  const ranking=Object.values(mapaT).map(t=>{ const late=t.total-t.ok-t.antec; return {...t, late, pont:t.total?Math.round(t.ok/t.total*100):0, mediaAtraso:late?Math.round(t.somaAtraso/late):0}; })
+    .sort((a,b)=> b.pont-a.pont || a.mediaAtraso-b.mediaAtraso);
+
+  const Tab=({k,l})=> <button onClick={()=>setView(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:7,fontWeight:800,fontSize:12,background:view===k?C.blue:"#fff",color:view===k?"#fff":C.dim,boxShadow:view===k?"none":"0 1px 2px rgba(0,0,0,.06)"}}>{l}</button>;
+
+  return (<div style={{animation:"slideup .25s ease"}}>
+    <div style={{display:"flex",gap:6,marginBottom:12}}>
+      <Tab k="justificar" l={`Justificativas (${pendList.length})`}/>
+      <Tab k="ciclo" l="Por ciclo"/>
+      <Tab k="transp" l="Pontualidade"/>
+    </div>
+
+    {!loaded && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando…</div>}
+
+    {loaded && view==="justificar" && <div>
+      <div style={{display:"flex",gap:6,marginBottom:12,background:"#fff",padding:4,borderRadius:10,border:`1px solid ${C.line}`}}>
+        <button onClick={()=>setJSub("pend")} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:7,fontWeight:800,fontSize:11.5,background:jSub==="pend"?C.red:"transparent",color:jSub==="pend"?"#fff":C.dim}}>Pendentes ({pendList.length})</button>
+        <button onClick={()=>setJSub("just")} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:7,fontWeight:800,fontSize:11.5,background:jSub==="just"?C.green:"transparent",color:jSub==="just"?"#fff":C.dim}}>Justificadas ({justList.length})</button>
+        <button onClick={()=>setJSub("periodo")} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:7,fontWeight:800,fontSize:11.5,background:jSub==="periodo"?C.blue:"transparent",color:jSub==="periodo"?"#fff":C.dim}}>Período</button>
+      </div>
+
+      {jSub==="periodo" ? <AnaliseJustificativas cfg={cfg}/> : <div>
+        <div style={{fontSize:11,color:C.faint,fontWeight:700,margin:"0 2px 8px"}}>Situação de hoje, ao vivo.</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <select value={carF} onChange={e=>setCarF(e.target.value)} style={{...inp,appearance:"auto",flex:1,minWidth:0}}>
+            <option value="">Todas as transportadoras</option>
+            {transportadoras.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+          <select value={cycF} onChange={e=>setCycF(e.target.value)} style={{...inp,appearance:"auto",width:118,flexShrink:0}}>
+            <option value="">Todos ciclos</option>
+            {ciclos.map(k=><option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+        {jSub==="pend" && (pendList.length===0
+          ? <div style={{...card,textAlign:"center",color:C.green,fontWeight:700,padding:26,fontSize:14}}>{(carF||cycF)?"Nenhuma rota pendente com esse filtro.":"Nenhuma rota pendente de justificativa."} 👏</div>
+          : pendList.map(r=><DelayReadonly key={r.id} r={r}/>))}
+        {jSub==="just" && (justList.length===0
+          ? <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Nenhuma justificativa registrada{(carF||cycF)?" com esse filtro":""} hoje ainda.</div>
+          : justList.map(r=><DelayReadonly key={r.id} r={r}/>))}
+      </div>}
+    </div>}
+
+    {loaded && view==="ciclo" && <div>
+      {porCiclo.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Sem chegadas com horário-meta ainda.</div>}
+      {porCiclo.map(c=>(
+        <div key={c.k} style={{...card,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12,borderLeft:`5px solid ${c.color}`}}>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,fontSize:15}}>Ciclo {c.k}</div>
+            <div style={{fontSize:12,color:C.dim,marginTop:2}}>{c.total} chegada(s) · {c.atras} atrasada(s){c.antec?` · ${c.antec} antecipada(s)`:""}</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:22,fontWeight:800,color:c.atras?C.red:(c.ok===c.total?C.green:C.orange)}}>{c.total?Math.round(c.ok/c.total*100):0}%</div>
+            <div style={{fontSize:10,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>no horário</div>
+            {c.atras>0 && <div style={{fontSize:11,color:C.red,marginTop:2}}>atraso médio {c.mediaAtraso} min</div>}
+            {c.antec>0 && <div style={{fontSize:11,color:C.orange,marginTop:2}}>{c.antec} antecipada(s)</div>}
+          </div>
+        </div>
+      ))}
+    </div>}
+
+    {loaded && view==="transp" && <div>
+      {ranking.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Sem dados de chegada com horário-meta ainda.</div>}
+      {ranking.map((t,i)=>(
+        <div key={t.nome} style={{...card,padding:"11px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:26,height:26,borderRadius:"50%",background:i===0?C.green:i===1?"#7bbf6a":i===2?"#b9d8ad":"#eee",color:i<3?"#fff":C.dim,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,flexShrink:0}}>{i+1}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,fontSize:13.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.nome}</div>
+            <div style={{fontSize:11.5,color:C.faint,marginTop:2}}>{t.ok}/{t.total} no horário{t.late>0?` · ${t.late} atras. (méd ${t.mediaAtraso} min)`:""}{t.antec>0?` · ${t.antec} antec.`:""}</div>
+          </div>
+          <div style={{fontSize:20,fontWeight:800,color:t.pont>=80?C.green:t.pont>=50?C.orange:C.red}}>{t.pont}%</div>
+        </div>
+      ))}
+    </div>}
+    <div style={{textAlign:"center",marginTop:10}}><button onClick={pull} style={linkBtn}>↻ Atualizar</button></div>
+  </div>);
+}
+
+function JustifyItem({r,onSave}){
+  const [open,setOpen]=useState(false),[cat,setCat]=useState(r.justifCat||""),[txt,setTxt]=useState(r.justif||""),[saved,setSaved]=useState(!!r.justif);
+  const ok=cat&&txt.trim();
+  const save=()=>{ if(!ok)return; onSave(r,cat,txt.trim()); setSaved(true); setOpen(false); };
+  return (<div style={{...card,padding:"12px 14px",marginBottom:8,borderLeft:`5px solid ${saved?C.green:C.red}`}}>
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontWeight:800,fontSize:14.5}}>{r.name}</span><span style={{fontSize:10,fontWeight:800,color:"#fff",background:cyMeta(r.cycle).color,borderRadius:5,padding:"2px 6px"}}>{r.cycle}</span>{r.d&&r.d.overdue && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:C.orange,borderRadius:5,padding:"2px 6px"}}>EM ROTA</span>}</div>
+        <div style={{fontSize:12,color:C.dim,marginTop:2}}>{r.carrier} · Rota {r.route} · {r.onda||"—"}</div>
+        <div style={{fontSize:11.5,color:C.red,fontWeight:700,marginTop:3}}>{r.d&&r.d.overdue?`Ainda não chegou · ${r.d.lateMin} min além do corte ${r.d.meta}`:`Atrasou ${r.d.lateMin} min (meta ${r.d.meta})`}</div>
+      </div>
+      {!open && <button onClick={()=>setOpen(true)} style={{...btnGhost,width:"auto",padding:"8px 14px",fontSize:12.5,borderColor:saved?C.green:C.blue,color:saved?C.green:C.blue}}>{saved?"Ver/editar":"Justificar"}</button>}
+    </div>
+    {saved && !open && <div style={{marginTop:8,background:"#f7f7f7",borderRadius:6,padding:"8px 10px"}}>{r.justifCat&&<div style={{fontSize:11,fontWeight:800,color:C.blue,marginBottom:2}}>{r.justifCat}</div>}<div style={{fontSize:12.5,color:C.dim}}>“{r.justif||txt}”</div></div>}
+    {open && <div style={{marginTop:10}}>
+      <select value={cat} onChange={e=>setCat(e.target.value)} style={{...inp,appearance:"auto",marginBottom:8}}>
+        <option value="">Motivo (categoria)…</option>
+        {JUSTIF_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+      </select>
+      <textarea value={txt} onChange={e=>setTxt(e.target.value)} placeholder="Detalhe o que aconteceu…" style={{...inp,minHeight:60,resize:"vertical"}}/>
+      <div style={{display:"flex",gap:8,marginTop:8}}><button onClick={save} disabled={!ok} style={{...btnBlue,padding:"10px 0",opacity:ok?1:.5,cursor:ok?"pointer":"not-allowed"}}>Salvar justificativa</button><button onClick={()=>setOpen(false)} style={{...btnGhost,width:"auto",padding:"10px 16px"}}>Cancelar</button></div>
+      {!ok && <div style={{fontSize:11,color:C.faint,marginTop:6}}>Selecione a categoria e escreva o detalhe (os dois são obrigatórios).</div>}
+    </div>}
+  </div>);
+}
+
+/* ============ visualização read-only de atraso (coordenação) ============ */
+function DelayReadonly({r}){
+  const just=!!r.justif;
+  return (<div style={{...card,padding:"12px 14px",marginBottom:8,borderLeft:`5px solid ${just?C.green:C.red}`}}>
+    <div style={{minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <span style={{fontWeight:800,fontSize:14.5}}>{r.name}</span>
+        <span style={{fontSize:10,fontWeight:800,color:"#fff",background:cyMeta(r.cycle).color,borderRadius:5,padding:"2px 6px"}}>{r.cycle}</span>
+        {r.d&&r.d.overdue && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:C.orange,borderRadius:5,padding:"2px 6px"}}>EM ROTA</span>}
+        {!just && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:C.red,borderRadius:5,padding:"2px 6px"}}>PENDENTE</span>}
+      </div>
+      <div style={{fontSize:12,color:C.dim,marginTop:2}}>{r.carrier} · Rota {r.route} · {r.onda||"—"}</div>
+      <div style={{fontSize:11.5,color:C.red,fontWeight:700,marginTop:3}}>{r.d&&r.d.overdue?`Ainda não chegou · ${r.d.lateMin} min além do corte ${r.d.meta}`:`Atrasou ${r.d.lateMin} min (meta ${r.d.meta})`}</div>
+    </div>
+    {just
+      ? <div style={{marginTop:8,background:"#f7f7f7",borderRadius:6,padding:"8px 10px"}}>{r.justifCat&&<div style={{fontSize:11,fontWeight:800,color:C.blue,marginBottom:2}}>{r.justifCat}</div>}<div style={{fontSize:12.5,color:C.dim}}>“{r.justif}”</div></div>
+      : <div style={{marginTop:8,fontSize:11.5,color:C.faint,fontStyle:"italic"}}>Aguardando justificativa do dispatcher.</div>}
+  </div>);
+}
+
+/* ============ JUSTIFICAR — DISPATCHER (escopo transportadora+ciclo) ============ */
+function JustifyDispatcherScreen({cfg}){
+  const [carrier,setCarrier]=useState("");
+  const [cycle,setCycle]=useState("");
+  const [rows,setRows]=useState([]);
+  useEffect(()=>{ if(!fbDB) return; fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>setRows(fbRows(snap.val())));
+    return ()=>ref.off("value",h);
+  },[]);
+  // pendências de justificativa por ciclo, só da transportadora escolhida
+  const pendByCycle={};
+  if(carrier){
+    const atrasados=rows.filter(r=>(r.status==="chegou"||r.status==="saiu")&&r.arrTs).map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.meta!=null&&r.d.late);
+    const emRota=rows.filter(r=>r.status==="a_caminho").map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.overdue);
+    const _seen={};
+    [...emRota,...atrasados].forEach(r=>{ if(_seen[r.id])return; _seen[r.id]=true; if(r.carrier!==carrier||r.justif)return; pendByCycle[r.cycle]=(pendByCycle[r.cycle]||0)+1; });
+  }
+  const totalPend=Object.values(pendByCycle).reduce((a,b)=>a+b,0);
+  if(!carrier||!cycle){
+    return (<div style={{animation:"slideup .25s ease",paddingTop:4}}>
+      <div style={{...card,padding:"24px 18px"}}>
+        <div style={{fontSize:30,marginBottom:8}}>📝</div>
+        <div style={{fontWeight:800,fontSize:19,marginBottom:6}}>Justificar atrasos</div>
+        <div style={{fontSize:13,color:C.dim,marginBottom:16,lineHeight:1.5}}>Escolha a <b>transportadora</b> e o <b>ciclo</b> para justificar os atrasos só dos seus motoristas.</div>
+        <Field label="Transportadora">
+          <select value={carrier} onChange={e=>setCarrier(e.target.value)} style={{...inp,appearance:"auto"}}>
+            <option value="">Selecione…</option>
+            {CARRIERS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Ciclo">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>{ const n=pendByCycle[c.k]||0; const on=cycle===c.k;
+              return (<button key={c.k} onClick={()=>setCycle(c.k)} style={{position:"relative",flex:1,padding:"13px 0",borderRadius:8,border:`1.5px solid ${on?c.color:(carrier&&n?C.red:"#d9d9d9")}`,background:on?c.color:"#fff",color:on?"#fff":C.dim,fontWeight:800,fontSize:14,cursor:"pointer"}}>
+                {c.k}
+                {carrier && n>0 && <span style={{position:"absolute",top:-8,right:-7,minWidth:19,height:19,padding:"0 5px",borderRadius:10,background:C.red,color:"#fff",fontSize:11,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 1px 3px rgba(0,0,0,.25)"}}>{n}</span>}
+              </button>);
+            })}
+          </div>
+        </Field>
+        {carrier
+          ? (totalPend>0
+              ? <div style={{fontSize:11.5,color:C.red,fontWeight:700,marginTop:4}}>● Os números em vermelho são atrasos pendentes de justificativa em cada ciclo.</div>
+              : <div style={{fontSize:11.5,color:C.green,fontWeight:700,marginTop:4}}>Nenhuma pendência de justificativa nesta transportadora. 👏</div>)
+          : <div style={{fontSize:11.5,color:C.faint,marginTop:4}}>Selecione os dois para entrar.</div>}
+      </div>
+    </div>);
+  }
+  return <JustifyScopedList carrier={carrier} cycle={cycle} onChange={()=>{setCarrier("");setCycle("");}}/>;
+}
+
+function JustifyScopedList({carrier,cycle,onChange}){
+  const [rows,setRows]=useState([]),[loaded,setLoaded]=useState(false);
+  const pull=useCallback(()=>{ fbOnline(); },[]);
+  useEffect(()=>{ if(!fbDB){ setLoaded(true); return; } fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>{ setRows(fbRows(snap.val())); setLoaded(true); });
+    return ()=>ref.off("value",h);
+  },[]);
+  const chegados=rows.filter(r=>(r.status==="chegou"||r.status==="saiu")&&r.arrTs);
+  const atrasados=chegados.map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.meta!=null&&r.d.late);
+  const emRota=rows.filter(r=>r.status==="a_caminho").map(r=>({...r,d:delayInfo(r)})).filter(r=>r.d.overdue);
+  const matchF=r=>r.carrier===carrier&&r.cycle===cycle;
+  const _seen={}; const listaJust=[...emRota.filter(matchF),...atrasados.filter(matchF)].filter(r=>{ if(_seen[r.id])return false; _seen[r.id]=true; return true; });
+  const pendN=listaJust.filter(r=>!r.justif).length;
+  const justificar=async(r,cat,texto)=>{ try{ if(fbDB){ fbOnline(); await fbDB.ref("ativos/"+r.id).update({justifCat:cat,justif:texto}); await fbDB.ref("historico/"+todayStr()+"/"+r.id).update({justifCat:cat,justif:texto,nome:r.name||"",carrier:r.carrier||"",ciclo:r.cycle||"",rota:r.route||"",onda:r.onda||"",day:todayStr()}); } }catch(e){} };
+  return (<div style={{animation:"slideup .25s ease"}}>
+    <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+      <div style={{...inp,padding:"10px",flex:1,minWidth:0,background:"#f3f4f6",display:"flex",alignItems:"center",gap:6}}><span style={{width:9,height:9,borderRadius:"50%",background:carrierColor(carrier),flexShrink:0}}></span><span style={{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{carrier}</span></div>
+      <div style={{...inp,padding:"10px",width:74,flexShrink:0,background:"#f3f4f6",fontWeight:800,textAlign:"center"}}>{cycle}</div>
+      <button onClick={onChange} style={linkBtn}>trocar</button>
+    </div>
+    {loaded && listaJust.length>0 && <div style={{fontSize:12,color:C.dim,fontWeight:700,margin:"0 2px 10px"}}><b style={{color:pendN?C.red:C.green}}>{pendN}</b> pendente(s) de {listaJust.length} atraso(s)</div>}
+    {!loaded && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando…</div>}
+    {loaded && listaJust.length===0 && <div style={{...card,textAlign:"center",color:C.green,fontWeight:700,padding:26,fontSize:14}}>Nenhum atraso pra justificar agora. 👏</div>}
+    {loaded && listaJust.map(r=><JustifyItem key={r.id} r={r} onSave={justificar}/>)}
+    <div style={{textAlign:"center",marginTop:10}}><button onClick={pull} style={linkBtn}>↻ Atualizar</button></div>
+  </div>);
+}
+
+
+/* ============ helpers de análise ============ */
+function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function hmText(m){ if(m==null||isNaN(m))return"—"; m=Math.max(0,Math.round(m)); const h=Math.floor(m/60),mm=m%60; return h?`${h}h${String(mm).padStart(2,"0")}`:`${mm}min`; }
+function durMin(a,b){ if(!a||!b)return null; const v=toMin(b)-toMin(a); return v>=0?v:null; }
+
+function Donut({pct,size=118,stroke=15,color=C.green,track="#eef0f2",label,sub}){
+  const r=(size-stroke)/2, cx=size/2, cy=size/2, circ=2*Math.PI*r;
+  const off=circ*(1-Math.max(0,Math.min(100,pct))/100);
+  return (<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <circle cx={cx} cy={cy} r={r} fill="none" stroke={track} strokeWidth={stroke}/>
+    <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={off} transform={`rotate(-90 ${cx} ${cy})`} style={{transition:"stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)"}}/>
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={size*0.27} fontWeight="800" fill={C.text}>{label}</text>
+    {sub&&<text x={cx} y={cy+size*0.2} textAnchor="middle" fontSize={size*0.097} fontWeight="700" fill={C.faint}>{sub}</text>}
+  </svg>);
+}
+function Kpi({label,value,sub,color}){return(<div style={{flex:1,minWidth:0,background:"#fff",borderRadius:14,padding:"13px 12px",boxShadow:"0 1px 3px rgba(0,0,0,.06)",borderTop:`3px solid ${color}`}}><div style={{fontSize:25,fontWeight:800,color,lineHeight:1}}>{value}</div><div style={{fontSize:10,color:C.dim,fontWeight:800,textTransform:"uppercase",marginTop:5,letterSpacing:.2}}>{label}</div>{sub&&<div style={{fontSize:10,color:C.faint,marginTop:1}}>{sub}</div>}</div>);}
+function HBar({name,color,value,max,right,sub}){const w=max?Math.max(3,Math.round(value/max*100)):0;return(<div style={{marginBottom:11}}>
+  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+    <span style={{width:9,height:9,borderRadius:"50%",background:color,flexShrink:0}}></span>
+    <span style={{flex:1,minWidth:0,fontSize:12.5,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</span>
+    <span style={{fontSize:11.5,color:C.dim,fontWeight:800,whiteSpace:"nowrap"}}>{right}</span>
+  </div>
+  <div style={{height:10,background:"#eef0f2",borderRadius:6,overflow:"hidden"}}><div style={{height:"100%",width:w+"%",background:color,borderRadius:6,transition:"width .7s cubic-bezier(.2,.8,.2,1)"}}></div></div>
+  {sub&&<div style={{fontSize:10.5,color:C.faint,marginTop:3}}>{sub}</div>}
+</div>);}
+function SectionTitle({children,note}){return(<div style={{display:"flex",alignItems:"baseline",gap:8,margin:"18px 2px 10px"}}><span style={{fontSize:13,fontWeight:800,color:C.text,letterSpacing:.2}}>{children}</span>{note&&<span style={{fontSize:11.5,color:C.faint,fontWeight:600}}>{note}</span>}</div>);}
+
+/* ============ ANÁLISE (histórico) ============ */
+function AnaliseScreen({cfg}){
+  const [view,setView]=useState("atrasos");
+  const Tab=({k,l})=> <button onClick={()=>setView(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 4px",borderRadius:7,fontWeight:800,fontSize:12,whiteSpace:"nowrap",background:view===k?C.blue:"#fff",color:view===k?"#fff":C.dim,boxShadow:view===k?"none":"0 1px 2px rgba(0,0,0,.06)"}}>{l}</button>;
+  return (<div style={{animation:"slideup .25s ease"}}>
+    <div style={{display:"flex",gap:6,marginBottom:12}}>
+      <Tab k="atrasos" l="Atrasos"/>
+      <Tab k="just" l="Justificativas"/>
+      <Tab k="tempos" l="Tempos"/>
+    </div>
+    {view==="atrasos" ? <AnaliseAtrasos cfg={cfg}/> : view==="just" ? <AnaliseJustificativas cfg={cfg}/> : <AnaliseTempos cfg={cfg}/>}
+  </div>);
+}
+
+function AnaliseJustificativas({cfg}){
+  const hoje=new Date(); const semana=new Date(hoje.getTime()-6*864e5);
+  const [from,setFrom]=useState(ymd(semana)),[to,setTo]=useState(ymd(hoje));
+  const [rows,setRows]=useState(null),[loading,setLoading]=useState(false),[err,setErr]=useState("");
+  const [carF,setCarF]=useState("");
+  const buscar=async()=>{ setLoading(true); setErr("");
+    try{ const r=await fbHistRows(from,to); setRows(r); }
+    catch(e){ setErr("Não consegui buscar o histórico."); } setLoading(false); };
+  useEffect(()=>{ buscar(); },[]);
+  const fmtDia=d=>String(d||"").split("-").reverse().join("/");
+
+  const all=(rows||[]).filter(r=>r.justif||r.justifCat);
+  const transp=[...new Set(all.map(r=>r.carrier).filter(Boolean))].sort();
+  const list=(carF?all.filter(r=>r.carrier===carF):all).slice().sort((a,b)=>String(b.dia).localeCompare(String(a.dia))||String(a.carrier).localeCompare(String(b.carrier)));
+  const byCat={}; list.forEach(r=>{ const c=r.justifCat||"Sem categoria"; byCat[c]=(byCat[c]||0)+1; });
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+
+  const baixar=()=>{
+    const esc=s=>`"${String(s==null?"":s).replace(/"/g,'""')}"`;
+    const head=["Data","Transportadora","Ciclo","Rota","Onda","Chegada","Atraso (min)","Categoria","Justificativa"];
+    const lines=[head.map(esc).join(",")];
+    list.forEach(r=>{ lines.push([fmtDia(r.dia),r.carrier,r.ciclo,r.rota,r.onda,r.chegada||"",(r.atraso!==""&&r.atraso!=null)?r.atraso:"",r.justifCat,r.justif].map(esc).join(",")); });
+    const csv="\ufeff"+lines.join("\r\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");
+    a.href=url; a.download=`justificativas_${from}_a_${to}.csv`; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },300);
+  };
+
+  return (<div>
+    <div style={{...card,padding:"12px 14px",marginBottom:12}}>
+      <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:115}}><div style={{fontSize:10.5,color:C.faint,fontWeight:700,marginBottom:3,textTransform:"uppercase"}}>De</div><input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{...inp,appearance:"auto",padding:"9px 10px"}}/></div>
+        <div style={{flex:1,minWidth:115}}><div style={{fontSize:10.5,color:C.faint,fontWeight:700,marginBottom:3,textTransform:"uppercase"}}>Até</div><input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{...inp,appearance:"auto",padding:"9px 10px"}}/></div>
+        <button onClick={buscar} style={{...btnBlue,width:"auto",padding:"10px 18px"}}>Buscar</button>
+      </div>
+    </div>
+    {loading && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando histórico…</div>}
+    {err && <div style={{...card,textAlign:"center",color:C.red,padding:18,fontSize:13}}>{err}</div>}
+    {rows && !loading && all.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Nenhuma justificativa nesse período.</div>}
+
+    {rows && !loading && all.length>0 && <div style={{animation:"slideup .3s ease"}}>
+      <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+        <select value={carF} onChange={e=>setCarF(e.target.value)} style={{...inp,appearance:"auto",flex:1,minWidth:0}}>
+          <option value="">Todas as transportadoras</option>
+          {transp.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+        <button onClick={baixar} style={{...btnGreen,width:"auto",padding:"10px 14px",fontSize:13,whiteSpace:"nowrap"}}>⬇ Baixar CSV</button>
+      </div>
+
+      <SectionTitle note={`${list.length} no período`}>Por categoria</SectionTitle>
+      <div style={{...card,padding:"12px 14px",marginBottom:4}}>
+        {cats.map(([c,n])=>(<div key={c} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #f2f2f2"}}><span style={{fontSize:13,color:C.text}}>{c}</span><span style={{fontWeight:800,fontSize:13,color:C.blue}}>{n}</span></div>))}
+      </div>
+
+      <SectionTitle>Justificativas</SectionTitle>
+      {list.map((r,i)=>(
+        <div key={r.sid+"_"+i} style={{...card,padding:"11px 14px",marginBottom:7,borderLeft:`5px solid ${carrierColor(r.carrier)}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <span style={{fontWeight:800,fontSize:13.5}}>{r.nome}</span>
+            <span style={{fontSize:10,fontWeight:800,color:"#fff",background:cyMeta(r.ciclo).color,borderRadius:5,padding:"2px 6px"}}>{r.ciclo||"—"}</span>
+            {r.justifCat && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:C.blue,borderRadius:5,padding:"2px 6px"}}>{r.justifCat}</span>}
+            {r.atraso!==""&&Number(r.atraso)>0 && <span style={{fontSize:10.5,fontWeight:800,color:C.red}}>+{r.atraso} min</span>}
+          </div>
+          <div style={{fontSize:11.5,color:C.dim,marginTop:2}}>{r.carrier} · Rota {r.rota} · {fmtDia(r.dia)}{r.chegada?` · chegou ${r.chegada}`:""}</div>
+          <div style={{fontSize:12.5,color:C.text,marginTop:4}}>“{r.justif||"—"}”</div>
+        </div>
+      ))}
+    </div>}
+  </div>);
+}
+
+function AnaliseAtrasos({cfg}){
+  const hoje=new Date(); const semana=new Date(hoje.getTime()-6*864e5);
+  const [from,setFrom]=useState(ymd(semana)),[to,setTo]=useState(ymd(hoje));
+  const [rows,setRows]=useState(null),[loading,setLoading]=useState(false),[err,setErr]=useState("");
+  const [openCar,setOpenCar]=useState({});
+  const buscar=async()=>{ setLoading(true); setErr("");
+    try{ const r=await fbHistRows(from,to); setRows(r); }
+    catch(e){ setErr("Não consegui buscar o histórico."); } setLoading(false); };
+  useEffect(()=>{ buscar(); },[]);
+
+  const comMeta=(rows||[]).filter(r=>r.status);
+  const lateRows=comMeta.filter(r=>r.status==="atrasado");
+  const earlyRows=comMeta.filter(r=>r.status==="antecipado");
+  const okRows=comMeta.filter(r=>r.status==="no_horario");
+  const totalCheg=comMeta.length, totalLate=lateRows.length, totalEarly=earlyRows.length, totalOk=okRows.length;
+  const pctOnTime=totalCheg?Math.round(totalOk/totalCheg*100):0;
+  const avgLate=totalLate?Math.round(lateRows.reduce((a,r)=>a+Number(r.atraso),0)/totalLate):0;
+  const piorAtraso=totalLate?Math.max(...lateRows.map(r=>Number(r.atraso))):0;
+
+  const mc={}; comMeta.forEach(r=>{ const t=r.carrier||"—"; (mc[t]=mc[t]||{nome:t,total:0,late:0,soma:0}); mc[t].total++; if(r.status==="atrasado"){mc[t].late++; mc[t].soma+=Number(r.atraso);} });
+  const rankCar=Object.values(mc).map(t=>({...t,pct:t.total?Math.round(t.late/t.total*100):0,media:t.late?Math.round(t.soma/t.late):0})).sort((a,b)=>b.late-a.late||b.pct-a.pct);
+  const maxLate=Math.max(1,...rankCar.map(t=>t.late));
+  const md={}; comMeta.forEach(r=>{ if(r.status!=="atrasado")return; const t=r.carrier||"—"; const n=r.nome||"—"; (md[t]=md[t]||{}); (md[t][n]=md[t][n]||{nome:n,late:0,soma:0}); md[t][n].late++; md[t][n].soma+=Number(r.atraso); });
+  const carsOfens=Object.keys(md).map(t=>({carrier:t,drivers:Object.values(md[t]).map(x=>({...x,media:Math.round(x.soma/x.late)})).sort((a,b)=>b.late-a.late||b.media-a.media),total:Object.values(md[t]).reduce((a,x)=>a+x.late,0)})).sort((a,b)=>b.total-a.total);
+
+  return (<div>
+    <div style={{...card,padding:"12px 14px",marginBottom:12}}>
+      <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:115}}><div style={{fontSize:10.5,color:C.faint,fontWeight:700,marginBottom:3,textTransform:"uppercase"}}>De</div><input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{...inp,appearance:"auto",padding:"9px 10px"}}/></div>
+        <div style={{flex:1,minWidth:115}}><div style={{fontSize:10.5,color:C.faint,fontWeight:700,marginBottom:3,textTransform:"uppercase"}}>Até</div><input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{...inp,appearance:"auto",padding:"9px 10px"}}/></div>
+        <button onClick={buscar} style={{...btnBlue,width:"auto",padding:"10px 18px"}}>Buscar</button>
+      </div>
+    </div>
+    {loading && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando histórico…</div>}
+    {err && <div style={{...card,textAlign:"center",color:C.red,padding:18,fontSize:13}}>{err}</div>}
+    {rows && !loading && comMeta.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Sem chegadas com horário-meta nesse período.</div>}
+
+    {rows && !loading && comMeta.length>0 && <div style={{animation:"slideup .3s ease"}}>
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <Kpi label="Chegadas" value={totalCheg} color={C.blue}/>
+        <Kpi label="Atrasos" value={totalLate} color={C.red}/>
+        <Kpi label="Atraso médio" value={avgLate?hmText(avgLate):"—"} color={C.orange}/>
+      </div>
+
+      <div style={{...card,padding:"16px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:18}}>
+        <Donut pct={pctOnTime} color={pctOnTime>=80?C.green:pctOnTime>=50?C.orange:C.red} label={pctOnTime+"%"} sub="no horário"/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:800,marginBottom:8}}>Pontualidade geral</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:C.dim,marginBottom:5}}><span style={{width:10,height:10,borderRadius:3,background:C.green}}></span>{totalOk} no horário</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:C.dim,marginBottom:5}}><span style={{width:10,height:10,borderRadius:3,background:C.red}}></span>{totalLate} atrasada(s)</div>
+          {totalEarly>0 && <div style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:C.dim,marginBottom:5}}><span style={{width:10,height:10,borderRadius:3,background:C.orange}}></span>{totalEarly} antecipada(s)</div>}
+          {piorAtraso>0 && <div style={{fontSize:12,color:C.faint,marginTop:6}}>Pior atraso: <b style={{color:C.red}}>{hmText(piorAtraso)}</b></div>}
+        </div>
+      </div>
+
+      <SectionTitle note={`${rankCar.length} transportadora(s)`}>Atrasos por transportadora</SectionTitle>
+      <div style={{...card,padding:"14px 16px"}}>
+        {rankCar.map(t=>(
+          <HBar key={t.nome} name={t.nome} color={carrierColor(t.nome)} value={t.late} max={maxLate}
+            right={`${t.late}/${t.total} · ${t.pct}%`} sub={t.late?`atraso médio ${t.media} min`:"sem atrasos"}/>
+        ))}
+      </div>
+
+      <SectionTitle note="por transportadora">Motoristas ofensores</SectionTitle>
+      {carsOfens.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:22,fontSize:13}}>Ninguém atrasou no período. 👏</div>}
+      {carsOfens.map(c=>(
+        <div key={c.carrier} style={{marginBottom:8}}>
+          <div onClick={()=>setOpenCar(o=>({...o,[c.carrier]:!o[c.carrier]}))} style={{...card,padding:"11px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",borderLeft:`5px solid ${carrierColor(c.carrier)}`}}>
+            <span style={{width:11,height:11,borderRadius:"50%",background:carrierColor(c.carrier),flexShrink:0}}></span>
+            <span style={{flex:1,minWidth:0,fontWeight:800,fontSize:13.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.carrier}</span>
+            <span style={{background:C.red,color:"#fff",borderRadius:10,padding:"1px 9px",fontWeight:800,fontSize:12}}>{c.total}</span>
+            <span style={{color:C.faint,fontSize:13}}>{openCar[c.carrier]?"▴":"▾"}</span>
+          </div>
+          {openCar[c.carrier] && <div style={{marginTop:4}}>
+            {c.drivers.map((m,i)=>(
+              <div key={m.nome+i} style={{...card,padding:"9px 14px",marginTop:4,display:"flex",alignItems:"center",gap:10}}>
+                <span style={{color:C.faint,fontWeight:800,fontSize:12,width:18}}>{i+1}</span>
+                <span style={{flex:1,minWidth:0,fontSize:13,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.nome}</span>
+                <span style={{fontSize:12,color:C.red,fontWeight:700}}>{m.late}× · {m.media} min</span>
+              </div>
+            ))}
+          </div>}
+        </div>
+      ))}
+    </div>}
+  </div>);
+}
+
+function AnaliseTempos({cfg}){
+  const [date,setDate]=useState(ymd(new Date())),[rows,setRows]=useState(null),[loading,setLoading]=useState(false),[err,setErr]=useState(""),[group,setGroup]=useState("ciclo");
+  const buscar=async()=>{ setLoading(true); setErr("");
+    try{ const r=await fbHistRows(date,date); setRows(r); }
+    catch(e){ setErr("Não consegui buscar."); } setLoading(false); };
+  useEffect(()=>{ buscar(); },[]);
+  const data=rows||[];
+  const keyer=r=> group==="ciclo"?(r.ciclo||"—"):(r.carrier||"—");
+  const groups={}; data.forEach(r=>{ const k=keyer(r); (groups[k]=groups[k]||[]).push(r); });
+  const order=Object.keys(groups).sort((a,b)=> group==="ciclo" ? ((CYCLES.findIndex(c=>c.k===a))-(CYCLES.findIndex(c=>c.k===b))) : a.localeCompare(b));
+  const Seg=({k,l})=> <button onClick={()=>setGroup(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"8px 4px",borderRadius:7,fontWeight:800,fontSize:12,background:group===k?C.blue:"#fff",color:group===k?"#fff":C.dim,boxShadow:group===k?"none":"0 1px 2px rgba(0,0,0,.06)"}}>{l}</button>;
+
+  // métricas gerais do dia
+  const patiosAll=data.map(r=>durMin(r.raio,r.saida)).filter(v=>v!=null);
+  const mediaGeral=patiosAll.length?Math.round(patiosAll.reduce((a,v)=>a+v,0)/patiosAll.length):null;
+  const sairam=data.filter(r=>r.saida).length;
+  // tempo médio no pátio por grupo (pra barra)
+  const grpMedia=order.map(k=>{ const ps=groups[k].map(r=>durMin(r.raio,r.saida)).filter(v=>v!=null); return {k,media:ps.length?Math.round(ps.reduce((a,v)=>a+v,0)/ps.length):0,n:groups[k].length}; });
+  const maxMedia=Math.max(1,...grpMedia.map(g=>g.media));
+
+  return (<div>
+    <div style={{...card,padding:"12px 14px",marginBottom:10}}>
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <div style={{flex:1}}><div style={{fontSize:10.5,color:C.faint,fontWeight:700,marginBottom:3,textTransform:"uppercase"}}>Dia</div><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...inp,appearance:"auto",padding:"9px 10px"}}/></div>
+        <button onClick={buscar} style={{...btnBlue,width:"auto",padding:"10px 18px"}}>Buscar</button>
+      </div>
+    </div>
+
+    {loading && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando…</div>}
+    {err && <div style={{...card,textAlign:"center",color:C.red,padding:18,fontSize:13}}>{err}</div>}
+    {rows && !loading && data.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Sem registros nesse dia.</div>}
+
+    {rows && !loading && data.length>0 && <div style={{animation:"slideup .3s ease"}}>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <Kpi label="Motoristas" value={data.length} color={C.blue}/>
+        <Kpi label="Saíram" value={sairam} color={C.green}/>
+        <Kpi label="Pátio médio" value={mediaGeral!=null?hmText(mediaGeral):"—"} color={C.orange}/>
+      </div>
+
+      <SectionTitle>Tempo médio no pátio</SectionTitle>
+      <div style={{...card,padding:"14px 16px"}}>
+        {grpMedia.map(g=>(<HBar key={g.k} name={g.k} color={group==="ciclo"?cyMeta(g.k).color:carrierColor(g.k)} value={g.media} max={maxMedia} right={hmText(g.media)} sub={`${g.n} motorista(s)`}/>))}
+      </div>
+
+      <div style={{display:"flex",gap:6,margin:"16px 0 12px"}}><Seg k="ciclo" l="Por ciclo"/><Seg k="transp" l="Por transportadora"/></div>
+
+      {order.map(k=>{ const arr=groups[k].slice().sort((a,b)=>toMin(a.checkin||"99:99")-toMin(b.checkin||"99:99")); const cor=group==="ciclo"?cyMeta(k).color:carrierColor(k);
+        return (<div key={k} style={{marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,margin:"0 2px 6px"}}>
+            <span style={{width:11,height:11,borderRadius:"50%",background:cor}}></span>
+            <span style={{fontWeight:800,fontSize:14}}>{k}</span>
+            <span style={{color:C.faint,fontSize:12}}>· {arr.length} motorista(s)</span>
+          </div>
+          {arr.map((r,i)=>{ const noPatio=durMin(r.raio,r.saida); const transito=durMin(r.checkin,r.raio);
+            return (<div key={r.sid||i} style={{...card,padding:"11px 13px",marginBottom:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontWeight:800,fontSize:13.5,flex:1,minWidth:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.nome||"—"}</span>
+                {group==="ciclo" && <span style={{fontSize:11,color:C.dim,whiteSpace:"nowrap"}}>{r.carrier}</span>}
+                {group==="transp" && <span style={{fontSize:10,fontWeight:800,color:"#fff",background:cyMeta(r.ciclo).color,borderRadius:5,padding:"2px 6px"}}>{r.ciclo||"—"}</span>}
+                <span style={{fontSize:11,color:C.faint}}>Rota {r.rota||"—"}</span>
+              </div>
+              <Timeline checkin={r.checkin} raio={r.raio} saida={r.saida}/>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:9,fontSize:11,color:C.faint}}>
+                <span>{transito!=null?`Trajeto ${hmText(transito)}`:"\u00A0"}</span>
+                <span>{noPatio!=null?<>No pátio <b style={{color:C.dim}}>{hmText(noPatio)}</b></>:"\u00A0"}</span>
+              </div>
+            </div>);
+          })}
+        </div>);
+      })}
+    </div>}
+  </div>);
+}
+function Timeline({checkin,raio,saida}){
+  const pts=[["1º check-in",checkin,C.blue],["Entrou no raio",raio,C.green],["Saída",saida,C.dim]].filter(p=>p[1]);
+  if(pts.length===0) return null;
+  const mins=pts.map(p=>toMin(p[1])); const lo=Math.min(...mins), hi=Math.max(...mins), span=Math.max(1,hi-lo);
+  return (<div>
+    <div style={{position:"relative",height:14}}>
+      <div style={{position:"absolute",top:5,left:5,right:5,height:4,background:"#eef0f2",borderRadius:2}}></div>
+      {pts.length>1 && <div style={{position:"absolute",top:5,left:5,right:5,height:4,borderRadius:2,background:`linear-gradient(90deg,${C.blue},${C.green},${C.dim})`,opacity:.55}}></div>}
+      {pts.map((p,i)=>{ const x=span?((toMin(p[1])-lo)/span)*100:0; return (<div key={i} title={p[0]+" "+p[1]} style={{position:"absolute",left:`calc(${x}% )`,top:0,transform:"translateX(-50%)"}}><div style={{width:12,height:12,borderRadius:"50%",background:p[2],border:"2px solid #fff",boxShadow:"0 0 3px rgba(0,0,0,.3)"}}></div></div>);})}
+    </div>
+    <div style={{display:"flex",gap:6,marginTop:8}}>
+      <TempoBox label="1º check-in" val={checkin} color={C.blue}/>
+      <TempoBox label="Entrou (raio)" val={raio} color={C.green}/>
+      <TempoBox label="Saiu" val={saida} color={C.dim}/>
+    </div>
+  </div>);
+}
+function TempoBox({label,val,color}){return(<div style={{flex:1,textAlign:"center",background:"#fafafa",borderRadius:8,padding:"7px 4px"}}><div style={{fontSize:9.5,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>{label}</div><div style={{fontSize:16,fontWeight:800,color:val?color:C.faint,marginTop:1}}>{val||"—"}</div></div>);}
+
+/* ============ CONTROLE DISPATCHER (fluxo por transportadora+ciclo) ============ */
+function ControleDispatcherScreen({cfg}){
+  const [carrier,setCarrier]=useState("");
+  const [cycle,setCycle]=useState("");
+  if(!carrier||!cycle){
+    return (<div style={{animation:"slideup .25s ease",paddingTop:4}}>
+      <div style={{...card,padding:"24px 18px"}}>
+        <div style={{fontSize:30,marginBottom:8}}>🚦</div>
+        <div style={{fontWeight:800,fontSize:19,marginBottom:6}}>Controle por transportadora</div>
+        <div style={{fontSize:13,color:C.dim,marginBottom:16,lineHeight:1.5}}>Escolha a <b>transportadora</b> e o <b>ciclo</b> para ver o fluxo (faltam chegar, no pátio, saíram) só dos seus motoristas.</div>
+        <Field label="Transportadora">
+          <select value={carrier} onChange={e=>setCarrier(e.target.value)} style={{...inp,appearance:"auto"}}>
+            <option value="">Selecione…</option>
+            {CARRIERS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Ciclo">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>(
+              <button key={c.k} onClick={()=>setCycle(c.k)} style={{flex:1,padding:"13px 0",borderRadius:8,border:`1.5px solid ${cycle===c.k?c.color:"#d9d9d9"}`,background:cycle===c.k?c.color:"#fff",color:cycle===c.k?"#fff":C.dim,fontWeight:800,fontSize:14,cursor:"pointer"}}>{c.k}</button>
+            ))}
+          </div>
+        </Field>
+        <div style={{fontSize:11.5,color:C.faint,marginTop:4}}>Selecione os dois para entrar.</div>
+      </div>
+    </div>);
+  }
+  return <SaidasScreen cfg={cfg} lockCarrier={carrier} lockCycle={cycle} onChange={()=>{setCarrier("");setCycle("");}}/>;
+}
+
+/* ============ SAÍDAS PENDENTES ============ */
+function SaidasScreen({cfg,lockCarrier,lockCycle,onChange}){
+  const [rows,setRows]=useState([]),[expected,setExpected]=useState([]),[loaded,setLoaded]=useState(false),[carF,setCarF]=useState(""),[cyF,setCyF]=useState(""),[view,setView]=useState("chegar"),[gateCycle,setGateCycle]=useState(""),[ondaF,setOndaF]=useState("");
+  const seq=useRef(0),busy=useRef(false);
+  const pull=useCallback(()=>{ fbOnline(); },[]);
+  useEffect(()=>{ if(!fbDB){ setLoaded(true); return; } fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>{ setRows(fbRows(snap.val())); setLoaded(true); });
+    return ()=>ref.off("value",h);
+  },[]);
+  useEffect(()=>{ if(!cfg.webapp)return; jsonp(cfg.webapp+(cfg.webapp.includes("?")?"&":"?")+"routes=1").then(d=>setExpected(((d&&d.routes)||[]).filter(e=>!carrierHidden(e.carrier)))).catch(()=>{}); },[cfg.webapp]);
+
+  const transportadoras=[...new Set([...rows.map(r=>r.carrier),...expected.map(e=>e.carrier)].filter(Boolean))].sort();
+  const ciclos=CYCLES.map(c=>c.k).filter(k=>rows.some(r=>r.cycle===k)||expected.some(e=>e.cycle===k));
+  const carFilter=lockCarrier||carF, cyFilter=lockCycle||gateCycle||cyF;
+  const _nc=s=>String(s||"").trim().toUpperCase();
+  const ondaMap={}; expected.forEach(e=>{ if(e.onda!=null&&e.onda!=="") ondaMap[e.cycle+"|"+_nc(e.route)]=e.onda; });
+  const ondaNumF=o=>{ const m=String(o==null?"":o).match(/\d+/); return m?parseInt(m[0],10):null; };
+  const ondaOf=r=>{ let o=r.onda; if(!o) o=ondaMap[r.cycle+"|"+_nc(r.route)]; return o||""; };
+  const okC=r=>(!carFilter||r.carrier===carFilter)&&(!cyFilter||r.cycle===cyFilter)&&(!ondaF||String(ondaNumF(ondaOf(r)))===ondaF);
+
+  const checkedKeys=new Set(rows.map(r=>r.cycle+"|"+String(r.route||"").trim().toUpperCase()));
+  const enRoute=rows.filter(r=>r.status==="a_caminho"&&okC(r));
+  const noPatio=rows.filter(r=>r.status==="chegou"&&okC(r)).sort((a,b)=>(a.arrTs||0)-(b.arrTs||0));
+  const gone=rows.filter(r=>r.status==="saiu"&&okC(r)).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const semCheckin=expected.filter(e=>!checkedKeys.has(e.cycle+"|"+e.route)&&(!carFilter||_nc(e.carrier)===_nc(carFilter))&&(!cyFilter||e.cycle===cyFilter)&&(!ondaF||String(ondaNumF(e.onda))===ondaF));
+  const faltam=enRoute.length+semCheckin.length;
+  // ondas disponíveis para o filtro (respeita transportadora + ciclo, ignora a própria onda)
+  const ondasDisp=[...new Set([
+      ...rows.filter(r=>(!carFilter||r.carrier===carFilter)&&(!cyFilter||r.cycle===cyFilter)).map(r=>ondaNumF(ondaOf(r))),
+      ...expected.filter(e=>(!carFilter||_nc(e.carrier)===_nc(carFilter))&&(!cyFilter||e.cycle===cyFilter)).map(e=>ondaNumF(e.onda))
+    ].filter(n=>n!=null))].sort((a,b)=>a-b);
+
+  // faltam chegar agrupado por transportadora
+  const byCar={};
+  enRoute.forEach(r=>{ const t=r.carrier||"—"; (byCar[t]=byCar[t]||{enroute:[],pend:[]}); byCar[t].enroute.push(r); });
+  semCheckin.forEach(e=>{ const t=e.carrier||"—"; (byCar[t]=byCar[t]||{enroute:[],pend:[]}); byCar[t].pend.push(e); });
+  const carList=Object.entries(byCar).map(([t,v])=>({carrier:t,enroute:v.enroute.sort((a,b)=>((a.eta||etaStraight(a.dist)||999)-(b.eta||etaStraight(b.dist)||999))),pend:v.pend.slice().sort((a,b)=>String(a.route).localeCompare(String(b.route),undefined,{numeric:true})),total:v.enroute.length+v.pend.length})).sort((a,b)=>b.total-a.total);
+  const hhmm=mins=>{const d=new Date(Date.now()+mins*60000);return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
+
+  const selSty={...inp,appearance:"auto",padding:"10px 10px"};
+  const Seg=({k,l,n,c})=> <button onClick={()=>setView(k)} style={{flex:1,border:"none",cursor:"pointer",padding:"9px 3px",borderRadius:7,fontWeight:800,fontSize:11.5,background:view===k?C.blue:"transparent",color:view===k?"#fff":C.dim,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{l}<span style={{background:view===k?"rgba(255,255,255,.3)":c,color:"#fff",borderRadius:9,padding:"0 6px",fontSize:10.5}}>{n}</span></button>;
+  const Linha=({r,saiu})=>(
+    <div style={{...card,padding:"10px 13px",marginBottom:6,display:"flex",alignItems:"center",gap:10,borderLeft:`5px solid ${saiu?"#bbb":C.green}`,opacity:saiu?.8:1}}>
+      <span style={{width:11,height:11,borderRadius:"50%",background:carrierColor(r.carrier),flexShrink:0}}></span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontWeight:800,fontSize:14}}>{r.name}</span><span style={{fontSize:10,fontWeight:800,color:"#fff",background:cyMeta(r.cycle).color,borderRadius:5,padding:"2px 6px"}}>{r.cycle||"—"}</span></div>
+        <div style={{fontSize:12,color:C.dim,marginTop:2}}>{r.carrier} · Rota {r.route}</div>
+      </div>
+      <div style={{textAlign:"right",whiteSpace:"nowrap"}}>
+        {saiu
+          ? <><div style={{fontSize:12.5,fontWeight:800,color:C.dim}}>saiu {fmtAgo(r.ts)}</div><div style={{fontSize:9.5,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>finalizado</div></>
+          : <><div style={{fontSize:13,fontWeight:800,color:C.green}}>{r.arrTs?hmText((Date.now()-r.arrTs)/60000):"—"}</div><div style={{fontSize:9.5,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>no pátio</div></>}
+      </div>
+    </div>
+  );
+
+  if(!lockCycle && !gateCycle){
+    return (<div style={{animation:"slideup .25s ease",paddingTop:4}}>
+      <div style={{...card,padding:"24px 18px"}}>
+        <div style={{fontSize:30,marginBottom:8}}>🚦</div>
+        <div style={{fontWeight:800,fontSize:19,marginBottom:6}}>Fluxo por ciclo</div>
+        <div style={{fontSize:13,color:C.dim,marginBottom:16,lineHeight:1.5}}>Escolha o <b>ciclo</b> para ver o fluxo do pátio (faltam chegar, no pátio, saíram).</div>
+        <Field label="Ciclo">
+          <div style={{display:"flex",gap:8}}>
+            {CYCLES.filter(c=>!c.amb).map(c=>(
+              <button key={c.k} onClick={()=>setGateCycle(c.k)} style={{flex:1,padding:"15px 0",borderRadius:8,border:"1.5px solid #d9d9d9",background:"#fff",color:C.dim,fontWeight:800,fontSize:15,cursor:"pointer"}}>{c.k}</button>
+            ))}
+          </div>
+        </Field>
+        <div style={{fontSize:11.5,color:C.faint,marginTop:4}}>{loaded?"Selecione um ciclo para continuar.":"Carregando dados…"}</div>
+      </div>
+    </div>);
+  }
+
+  return (<div style={{animation:"slideup .25s ease"}}>
+    <div style={{display:"flex",gap:8,marginBottom:10}}>
+      <Kpi label="Faltam chegar" value={faltam} color={C.orange}/>
+      <Kpi label="No pátio" value={noPatio.length} color={C.green}/>
+      <Kpi label="Saíram" value={gone.length} color={C.dim}/>
+    </div>
+
+    {lockCarrier ? (
+      <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+        <div style={{...selSty,flex:1,minWidth:0,background:"#f3f4f6",display:"flex",alignItems:"center",gap:6}}><span style={{width:9,height:9,borderRadius:"50%",background:carrierColor(lockCarrier),flexShrink:0}}></span><span style={{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lockCarrier}</span></div>
+        <div style={{...selSty,width:74,flexShrink:0,background:"#f3f4f6",fontWeight:800,textAlign:"center"}}>{lockCycle}</div>
+        {onChange && <button onClick={onChange} style={{...linkBtn,flexShrink:0}}>trocar</button>}
+      </div>
+    ) : (
+      <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center"}}>
+        <select value={carF} onChange={e=>setCarF(e.target.value)} style={{...selSty,flex:1,minWidth:0}}>
+          <option value="">Todas as transportadoras</option>
+          {transportadoras.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+        <div style={{...selSty,width:74,flexShrink:0,background:"#f3f4f6",fontWeight:800,textAlign:"center"}}>{gateCycle}</div>
+        <button onClick={()=>setGateCycle("")} style={{...linkBtn,flexShrink:0}}>trocar</button>
+      </div>
+    )}
+
+    <div style={{display:"flex",gap:6,marginBottom:12,background:"#fff",padding:4,borderRadius:10,border:`1px solid ${C.line}`}}>
+      <Seg k="chegar" l="Faltam chegar" n={faltam} c={C.orange}/>
+      <Seg k="patio" l="No pátio" n={noPatio.length} c={C.green}/>
+      <Seg k="saiu" l="Saíram" n={gone.length} c={C.dim}/>
+    </div>
+
+    {ondasDisp.length>0 && <div style={{display:"flex",gap:6,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+      <span style={{fontSize:11.5,fontWeight:800,color:C.dim,marginRight:2}}>Onda:</span>
+      <button onClick={()=>setOndaF("")} style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${ondaF===""?C.blue:"#d9d9d9"}`,background:ondaF===""?C.blue:"#fff",color:ondaF===""?"#fff":C.dim,fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Todas</button>
+      {ondasDisp.map(n=>{const a=ondaF===String(n);return <button key={n} onClick={()=>setOndaF(String(n))} style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${a?C.blue:"#d9d9d9"}`,background:a?C.blue:"#fff",color:a?"#fff":C.dim,fontWeight:800,fontSize:12.5,cursor:"pointer"}}>Onda {n}</button>;})}
+    </div>}
+
+    {!loaded && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando…</div>}
+
+    {loaded && view==="chegar" && <div>
+      {expected.length===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:18,fontSize:12.5,marginBottom:8}}>Lista de rotas não carregada — mostro só quem já está a caminho.</div>}
+      {carList.length===0 ? <div style={{...card,textAlign:"center",color:C.green,fontWeight:700,padding:26,fontSize:15}}>Todos já chegaram! 🎉</div> : carList.map(c=>(
+        <div key={c.carrier} style={{...card,padding:"12px 14px",marginBottom:8,borderLeft:`5px solid ${carrierColor(c.carrier)}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:c.enroute.length||c.pend?10:0}}>
+            <span style={{width:11,height:11,borderRadius:"50%",background:carrierColor(c.carrier),flexShrink:0}}></span>
+            <span style={{flex:1,minWidth:0,fontWeight:800,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.carrier}</span>
+            <span style={{background:C.orange,color:"#fff",borderRadius:10,padding:"1px 10px",fontWeight:800,fontSize:12.5}}>{c.total}</span>
+          </div>
+          {c.enroute.map((r,i)=>{ const e=r.eta||etaStraight(r.dist);
+            return (<div key={r.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderTop:"1px solid #f0f0f0"}}>
+              <span style={{fontSize:13,fontWeight:700,minWidth:42}}>{r.route}</span>
+              <span style={{flex:1,fontSize:11.5,color:C.dim}}>{r.name} · {fmtDist(r.dist)}</span>
+              <span style={{textAlign:"right",whiteSpace:"nowrap"}}><span style={{fontSize:13,fontWeight:800,color:C.blue}}>{e?`~${e} min`:"—"}</span>{e&&<span style={{fontSize:10.5,color:C.faint,display:"block",fontWeight:700}}>chega {hhmm(e)}</span>}</span>
+            </div>);
+          })}
+          {c.pend.length>0 && <div style={{padding:"9px 0 0",borderTop:c.enroute.length?"1px solid #f0f0f0":"none"}}>
+            <div style={{fontSize:11,color:C.faint,fontWeight:700,marginBottom:6}}><b style={{color:C.orange}}>{c.pend.length}</b> rota(s) ainda sem check-in</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {c.pend.map((p,i)=>(<span key={p.route+i} style={{background:"#fff4ee",border:`1px solid #ffd9c2`,color:"#d4561c",borderRadius:7,padding:"4px 9px",fontWeight:800,fontSize:12}}>{p.route}</span>))}
+            </div>
+          </div>}
+        </div>
+      ))}
+    </div>}
+
+    {loaded && view==="patio" && (()=>{ const pbc={}; noPatio.forEach(r=>{const t=r.carrier||"—"; (pbc[t]=pbc[t]||[]).push(r);});
+      const patioList=Object.entries(pbc).map(([t,arr])=>({carrier:t,drivers:arr.slice().sort((a,b)=>String(a.vaga||"zzz").localeCompare(String(b.vaga||"zzz"),undefined,{numeric:true})),n:arr.length})).sort((a,b)=>b.n-a.n);
+      return (<div>
+        {noPatio.length===0 ? <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:14}}>Ninguém no pátio agora.</div> : patioList.map(c=>(
+          <div key={c.carrier} style={{...card,padding:"12px 14px",marginBottom:8,borderLeft:`5px solid ${carrierColor(c.carrier)}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <span style={{width:11,height:11,borderRadius:"50%",background:carrierColor(c.carrier),flexShrink:0}}></span>
+              <span style={{flex:1,minWidth:0,fontWeight:800,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.carrier}</span>
+              <span style={{background:C.green,color:"#fff",borderRadius:10,padding:"1px 10px",fontWeight:800,fontSize:12.5}}>{c.n}</span>
+            </div>
+            {c.drivers.map((r,i)=>(
+              <div key={r.id||i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderTop:"1px solid #f0f0f0"}}>
+                <span style={{minWidth:46,textAlign:"center",background:r.vaga?C.blue:"#eee",color:r.vaga?"#fff":C.faint,borderRadius:8,padding:"5px 4px",fontWeight:800,fontSize:14,lineHeight:1}}>{r.vaga||"—"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontWeight:800,fontSize:13.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span><span style={{fontSize:9.5,fontWeight:800,color:"#fff",background:cyMeta(r.cycle).color,borderRadius:4,padding:"1px 5px"}}>{r.cycle||"—"}</span></div>
+                  <div style={{fontSize:11.5,color:C.dim,marginTop:1}}>Rota {r.route}{r.onda?" · "+r.onda:""}</div>
+                </div>
+                <div style={{textAlign:"right",whiteSpace:"nowrap"}}><div style={{fontSize:12.5,fontWeight:800,color:C.orange}}>{r.arrTs?hmText((Date.now()-r.arrTs)/60000):"—"}</div><div style={{fontSize:9,color:C.faint,fontWeight:700,textTransform:"uppercase"}}>no pátio</div></div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>);
+    })()}
+
+    {loaded && view==="saiu" && <div>
+      {gone.length===0 ? <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:14}}>Ninguém saiu ainda.</div> : gone.map((r,i)=><Linha key={r.id||"g"+i} r={r} saiu/>)}
+    </div>}
+
+    <div style={{textAlign:"center",marginTop:10}}><button onClick={pull} style={linkBtn}>↻ Atualizar</button></div>
+  </div>);
+}
+
+/* ============ OVERLAY DE CHAMADA (motorista) ============ */
+function CallOverlay({vaga,senha,onda,onAck}){
+  const [pulse,setPulse]=useState(true);
+  useEffect(()=>{ const t=setInterval(()=>setPulse(p=>!p),700); return ()=>clearInterval(t); },[]);
+  return ReactDOM.createPortal((
+    <div style={{position:"fixed",inset:0,zIndex:100001,background:pulse?C.green:"#00c65e",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px",transition:"background .5s ease",animation:"pop .25s ease"}}>
+      <div style={{fontSize:74,lineHeight:1,animation:"blink 1s infinite"}}>🔔</div>
+      <div style={{color:"#fff",fontWeight:800,fontSize:34,marginTop:14,textAlign:"center",letterSpacing:.5}}>VOCÊ FOI CHAMADO!</div>
+      <div style={{color:"#fff",fontSize:16,marginTop:8,textAlign:"center",opacity:.95,maxWidth:340}}>A coordenação chamou você. Dirija-se agora à sua vaga.</div>
+      <div style={{background:"#fff",borderRadius:18,padding:"20px 26px",marginTop:22,minWidth:240,boxShadow:"0 8px 30px rgba(0,0,0,.3)"}}>
+        <div style={{fontSize:12,fontWeight:800,color:C.dim,letterSpacing:1,textTransform:"uppercase",textAlign:"center"}}>Sua vaga</div>
+        <div style={{fontSize:56,fontWeight:800,color:C.text,textAlign:"center",lineHeight:1.05,marginTop:2}}>{String(vaga||"—")}</div>
+        <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:10}}>
+          <div style={{textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:800,color:C.dim,textTransform:"uppercase"}}>Onda</div><div style={{fontSize:22,fontWeight:800}}>{String(onda||"—")}</div></div>
+          <div style={{textAlign:"center"}}><div style={{fontSize:10.5,fontWeight:800,color:C.dim,textTransform:"uppercase"}}>Senha</div><div style={{fontSize:22,fontWeight:800,color:C.blue}}>{String(senha||"—")}</div></div>
+        </div>
+      </div>
+      <button onClick={onAck} style={{marginTop:26,border:"none",borderRadius:14,padding:"18px 34px",background:"#fff",color:C.green,fontWeight:800,fontSize:18,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,.25)"}}>OK, ESTOU INDO →</button>
+    </div>), document.body);
+}
+
+/* ============ QR: gerar (motorista) e ler (operação) ============ */
+function QRCode({text,size=230}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!ref.current) return;
+    if(!window.qrcode){ ref.current.innerHTML='<div style="font-family:monospace;font-size:13px;word-break:break-all;padding:12px;border:1px dashed #bbb;border-radius:10px;color:#666">'+String(text)+'</div>'; return; }
+    try{
+      const qr=window.qrcode(0,'M'); qr.addData(String(text),'Byte'); qr.make();
+      const n=qr.getModuleCount(); const cell=Math.max(2,Math.floor(size/(n+8))); const margin=cell*4; const dim=cell*n+margin*2;
+      let rects="";
+      for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(qr.isDark(r,c)) rects+='<rect x="'+(margin+c*cell)+'" y="'+(margin+r*cell)+'" width="'+cell+'" height="'+cell+'"/>';
+      ref.current.innerHTML='<svg width="'+dim+'" height="'+dim+'" viewBox="0 0 '+dim+' '+dim+'" xmlns="http://www.w3.org/2000/svg"><rect width="'+dim+'" height="'+dim+'" fill="#fff"/><g fill="#111">'+rects+'</g></svg>';
+    }catch(e){ ref.current.innerHTML='<div style="font-family:monospace;font-size:13px;color:#666">'+String(text)+'</div>'; }
+  },[text,size]);
+  return <div ref={ref} style={{lineHeight:0,display:"inline-block"}}/>;
+}
+
+function QRScanner({onScan,onClose}){
+  const videoRef=useRef(null),canvasRef=useRef(null),rafRef=useRef(null),streamRef=useRef(null);
+  const [err,setErr]=useState(""),[manual,setManual]=useState("");
+  useEffect(()=>{
+    let dead=false;
+    if(!window.jsQR){ setErr("O leitor de QR não carregou (verifique a internet). Use o código manual abaixo."); return; }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ setErr("Câmera indisponível neste aparelho. Use o código manual."); return; }
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}).then(stream=>{
+      if(dead){ stream.getTracks().forEach(t=>t.stop()); return; }
+      streamRef.current=stream; const v=videoRef.current; if(!v) return;
+      v.srcObject=stream; v.setAttribute("playsinline","true"); v.play().catch(()=>{});
+      const tick=()=>{
+        if(dead) return;
+        const v=videoRef.current,cv=canvasRef.current;
+        if(v&&cv&&v.readyState>=2&&v.videoWidth){
+          const w=v.videoWidth,h=v.videoHeight; cv.width=w; cv.height=h;
+          const ctx=cv.getContext("2d",{willReadFrequently:true}); ctx.drawImage(v,0,0,w,h);
+          try{ const img=ctx.getImageData(0,0,w,h); const code=window.jsQR(img.data,w,h,{inversionAttempts:"dontInvert"});
+            if(code&&code.data){ onScan(code.data); return; } }catch(e){}
+        }
+        rafRef.current=requestAnimationFrame(tick);
+      };
+      rafRef.current=requestAnimationFrame(tick);
+    }).catch(()=>{ setErr("Não consegui abrir a câmera. Permita o acesso ou use o código manual."); });
+    return ()=>{ dead=true; if(rafRef.current)cancelAnimationFrame(rafRef.current); if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop()); };
+  },[]);
+  return ReactDOM.createPortal((
+    <div style={{position:"fixed",inset:0,zIndex:100002,background:"#000",display:"flex",flexDirection:"column"}}>
+      <div style={{position:"relative",flex:1,overflow:"hidden"}}>
+        <video ref={videoRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} muted playsInline/>
+        <canvas ref={canvasRef} style={{display:"none"}}/>
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
+          <div style={{width:"66%",maxWidth:280,aspectRatio:"1 / 1",border:"3px solid #fff",borderRadius:18,boxShadow:"0 0 0 9999px rgba(0,0,0,.45)"}}/>
+        </div>
+        <div style={{position:"absolute",top:"calc(env(safe-area-inset-top,0px) + 14px)",left:0,right:0,textAlign:"center",color:"#fff",fontWeight:800,fontSize:16,textShadow:"0 1px 3px rgba(0,0,0,.6)"}}>📷 Aponte para o QR de saída</div>
+      </div>
+      <div style={{background:"#fff",padding:"16px 16px calc(env(safe-area-inset-bottom,0px) + 16px)"}}>
+        {err && <div style={{color:C.orange,fontSize:13,fontWeight:700,marginBottom:10,textAlign:"center"}}>{err}</div>}
+        <div style={{display:"flex",gap:8}}>
+          <input value={manual} onChange={e=>setManual(e.target.value)} placeholder="ou digite o código do QR" style={{...inp,flex:1}}/>
+          <button onClick={()=>manual.trim()&&onScan(manual.trim())} style={{...btnBlue,width:"auto",padding:"0 18px"}}>OK</button>
+        </div>
+        <button onClick={onClose} style={{...btnGhost,marginTop:10}}>Fechar</button>
+      </div>
+    </div>), document.body);
+}
+
+/* ============ OPERAÇÃO — CHAMADA DE MOTORISTAS (coordenação) ============ */
+function OperacaoScreen({cfg}){
+  const [rows,setRows]=useState([]),[loaded,setLoaded]=useState(false),[expected,setExpected]=useState([]);
+  const [cyF,setCyF]=useState(""),[carF,setCarF]=useState(""),[open,setOpen]=useState({}),[flash,setFlash]=useState({});
+  const [scan,setScan]=useState(false),[toast,setToast]=useState(null);
+  const [,tick]=useState(0);
+  useEffect(()=>{ const t=setInterval(()=>tick(x=>x+1),15000); return ()=>clearInterval(t); },[]);
+  useEffect(()=>{ if(!fbDB){ setLoaded(true); return; } fbOnline();
+    const ref=fbDB.ref("ativos");
+    const h=ref.on("value",snap=>{ setRows(fbRows(snap.val())); setLoaded(true); });
+    return ()=>ref.off("value",h);
+  },[]);
+  useEffect(()=>{ if(!cfg.webapp)return; jsonp(cfg.webapp+(cfg.webapp.includes("?")?"&":"?")+"routes=1").then(d=>setExpected(((d&&d.routes)||[]).filter(e=>!carrierHidden(e.carrier)))).catch(()=>{}); },[cfg.webapp]);
+
+  const _nc=s=>String(s||"").trim().toUpperCase();
+  const ondaMap={}; expected.forEach(e=>{ if(e.onda!=null&&e.onda!=="") ondaMap[e.cycle+"|"+_nc(e.route)]=e.onda; });
+  const ondaNumX=o=>{ const m=String(o==null?"":o).match(/\d+/); return m?parseInt(m[0],10):null; };
+  const ondaOf=r=>{ let o=r.onda; if(!o) o=ondaMap[r.cycle+"|"+_nc(r.route)]; return o||""; };
+
+  const baseWaiting=rows.filter(r=>r.status==="chegou" && !r.galpao);
+  const ciclos=CYCLES.map(c=>c.k).filter(k=>baseWaiting.some(r=>r.cycle===k));
+  const carriers=[...new Set(baseWaiting.map(r=>r.carrier).filter(Boolean))].sort();
+  const waiting=baseWaiting.filter(r=>(!cyF||r.cycle===cyF)&&(!carF||r.carrier===carF));
+
+  const groups={};
+  waiting.forEach(r=>{ const n=ondaNumX(ondaOf(r)); const key=(n==null?"sem":String(n)); (groups[key]=groups[key]||[]).push(r); });
+  const ondaKeys=Object.keys(groups).sort((a,b)=>{ if(a==="sem")return 1; if(b==="sem")return -1; return (+a)-(+b); });
+  Object.values(groups).forEach(arr=>arr.sort((a,b)=>String(a.vaga||"zzz").localeCompare(String(b.vaga||"zzz"),undefined,{numeric:true})));
+
+  const chamar=(drivers)=>{ if(!fbDB||!drivers.length) return; fbOnline();
+    const ts=Date.now(); const ups={};
+    drivers.forEach(d=>{ ups["ativos/"+d.id+"/chamado"]=ts; ups["ativos/"+d.id+"/chamadoTs"]=ts; });
+    try{ fbDB.ref().update(ups); }catch(e){}
+    try{ const day=todayStr(); drivers.forEach(d=>{ fbDB.ref("historico/"+day+"/"+d.id).update({chamadoTs:ts}); }); }catch(e){}
+    const f={}; drivers.forEach(d=>f[d.id]=ts); setFlash(x=>({...x,...f})); setTimeout(()=>setFlash({}),1600);
+  };
+  const chamarOnda=(key,drivers)=>{ if(!drivers.length)return; const label=key==="sem"?"sem onda":("Onda "+key); if(window.confirm(`Chamar todos da ${label}? (${drivers.length} motorista(s))`)) chamar(drivers); };
+
+  // ===== vagas compartilhadas entre ondas: detecta vaga livre e o próximo da fila =====
+  const _vkey=r=>r.cycle+"|"+String(r.vaga||"").trim().toUpperCase();
+  const vagaSeq={}; rows.forEach(r=>{ if(!r.vaga) return; (vagaSeq[_vkey(r)]=vagaSeq[_vkey(r)]||[]).push(r); });
+  Object.values(vagaSeq).forEach(arr=>arr.sort((a,b)=>((ondaNumX(ondaOf(a))||999)-(ondaNumX(ondaOf(b))||999))||((a.arrTs||0)-(b.arrTs||0))));
+  // próximo motorista aguardando na mesma vaga+ciclo, de onda posterior a quem saiu
+  const nextForVaga=(drv)=>{ if(!drv||!drv.vaga) return null; const arr=vagaSeq[_vkey(drv)]||[]; const myOnda=ondaNumX(ondaOf(drv))||0;
+    return arr.filter(r=>r.status==="chegou"&&!r.galpao&&(ondaNumX(ondaOf(r))||0)>myOnda).sort((a,b)=>(ondaNumX(ondaOf(a))||0)-(ondaNumX(ondaOf(b))||0))[0]||null; };
+  // vagas que ficaram livres (alguém saiu) e têm um próximo aguardando
+  const freed=[];
+  Object.keys(vagaSeq).forEach(k=>{ const arr=vagaSeq[k]; const left=arr.filter(r=>r.status==="saiu"); if(!left.length) return;
+    const lastLeft=left.sort((a,b)=>(a.ts||0)-(b.ts||0))[left.length-1];
+    const nx=nextForVaga(lastLeft); if(!nx) return;
+    freed.push({vaga:nx.vaga,cycle:nx.cycle,onda:ondaNumX(ondaOf(nx)),driver:nx,called:!!nx.chamado}); });
+  const freedShown=freed.filter(f=>(!cyF||f.cycle===cyF)&&(!carF||f.driver.carrier===carF))
+    .sort((a,b)=>String(a.vaga).localeCompare(String(b.vaga),undefined,{numeric:true}));
+
+  const showToast=(t)=>{ setToast(t); setTimeout(()=>setToast(null),4200); };
+  const callNext=(drv,ctx)=>{ const nx=nextForVaga(drv); if(!nx){ showToast({ok:false,msg:`Vaga ${drv.vaga||"?"} livre — nenhum motorista da próxima onda aguardando nela.`}); return; }
+    chamar([nx]); showToast({ok:true,msg:`Vaga ${nx.vaga} · chamado ${nx.name} (Onda ${ondaNumX(ondaOf(nx))||"?"})${ctx?" · "+ctx:""}`}); };
+
+  // leitura do QR de saída (câmera ou coletor handheld) → 2º check + chama a próxima onda daquela vaga
+  const onScan=(raw)=>{ setScan(false);
+    let sid=String(raw||"").trim(); if(sid.indexOf("CPX:")===0) sid=sid.slice(4); else if(sid.indexOf("CPX|")===0) sid=sid.slice(4);
+    const drv=rows.find(r=>r.id===sid);
+    if(!drv){ showToast({ok:false,msg:"QR não reconhecido (motorista não está no dia de hoje)."}); return; }
+    if(fbDB){ fbOnline(); const ts=Date.now(); const u={check2:ts}; if(drv.status!=="saiu"){ u.status="saiu"; u.saidaTs=drv.saidaTs||ts; }
+      try{ fbDB.ref("ativos/"+drv.id).update(u); fbDB.ref("historico/"+todayStr()+"/"+drv.id).update({saidaConfTs:ts}); }catch(e){} }
+    const nx=nextForVaga(drv);
+    if(nx){ chamar([nx]); showToast({ok:true,msg:`✓ Saída conferida — ${drv.name}. Vaga ${nx.vaga}: chamado ${nx.name} (Onda ${ondaNumX(ondaOf(nx))||"?"}).`}); }
+    else { showToast({ok:true,msg:`✓ Saída conferida — ${drv.name}. Vaga ${drv.vaga||"?"} livre, sem próxima onda aguardando.`}); }
+  };
+  const onScanRef=useRef(onScan); onScanRef.current=onScan;
+  // coletor de mão (handheld): ele "digita" o código e dá Enter — capturamos como bipagem
+  useEffect(()=>{ let buf="", last=0;
+    const onKey=(e)=>{ const tag=e.target&&e.target.tagName; if(tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA") return;
+      const now=Date.now(); if(now-last>120) buf=""; last=now;
+      if(e.key==="Enter"){ if(buf.length>=3) onScanRef.current(buf); buf=""; return; }
+      if(e.key&&e.key.length===1) buf+=e.key; };
+    document.addEventListener("keydown",onKey);
+    return ()=>document.removeEventListener("keydown",onKey);
+  },[]);
+
+  const totalWaiting=waiting.length;
+  const bell=(color)=>(<span style={{fontSize:16,lineHeight:1}}>🔔</span>);
+
+  return (<div style={{animation:"slideup .25s ease"}}>
+    <div style={{...card,padding:"14px 16px",marginBottom:12,borderLeft:`5px solid ${C.blue}`}}>
+      <div style={{fontWeight:800,fontSize:17}}>📣 Chamar motoristas</div>
+      <div style={{fontSize:12.5,color:C.dim,marginTop:4,lineHeight:1.5}}>Toque no sino de uma onda para chamar todos dela, ou abra a onda e chame uma gaiola específica. O motorista recebe um aviso na hora.</div>
+      <div style={{fontSize:12,color:C.dim,marginTop:6,lineHeight:1.5}}>Bipe o QR de saída pela <b>câmera</b> ou pelo <b>coletor de mão</b> (é só disparar o coletor com esta aba aberta): a bipagem faz o <b>2º check</b> da saída e chama a próxima onda da vaga.</div>
+      <button onClick={()=>setScan(true)} style={{...btnBlue,marginTop:12,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>📷 Bipar QR de saída → chamar próxima onda</button>
+    </div>
+
+    {scan && <QRScanner onScan={onScan} onClose={()=>setScan(false)}/>}
+    {toast && ReactDOM.createPortal(
+      <div style={{position:"fixed",left:16,right:16,bottom:"calc(env(safe-area-inset-bottom,0px) + 20px)",zIndex:100003,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
+        <div style={{maxWidth:520,width:"100%",background:toast.ok?C.green:"#333",color:"#fff",borderRadius:12,padding:"14px 16px",fontWeight:700,fontSize:13.5,boxShadow:"0 6px 20px rgba(0,0,0,.3)",textAlign:"center",animation:"pop .25s ease"}}>{toast.ok?"✓ ":"⚠ "}{toast.msg}</div>
+      </div>, document.body)}
+
+    <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+      <span style={{fontSize:11.5,fontWeight:800,color:C.dim,marginRight:2}}>Ciclo:</span>
+      <button onClick={()=>setCyF("")} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${cyF===""?C.blue:"#d9d9d9"}`,background:cyF===""?C.blue:"#fff",color:cyF===""?"#fff":C.dim,fontWeight:800,fontSize:12,cursor:"pointer"}}>Todos</button>
+      {ciclos.map(k=>{const a=cyF===k;const cm=cyMeta(k);return <button key={k} onClick={()=>setCyF(a?"":k)} style={{padding:"6px 12px",borderRadius:20,border:`1.5px solid ${a?cm.color:"#d9d9d9"}`,background:a?cm.color:"#fff",color:a?"#fff":C.dim,fontWeight:800,fontSize:12,cursor:"pointer"}}>{k}</button>;})}
+    </div>
+    {carriers.length>0 && <select value={carF} onChange={e=>setCarF(e.target.value)} style={{...inp,appearance:"auto",padding:"10px",marginBottom:10}}>
+      <option value="">Todas as transportadoras</option>
+      {carriers.map(t=><option key={t} value={t}>{t}</option>)}
+    </select>}
+
+    <div style={{display:"flex",gap:10,marginBottom:12}}>
+      <Stat label="No pátio" value={totalWaiting} color={C.green}/>
+      <Stat label="Ondas" value={ondaKeys.length} color={C.blue}/>
+      <Stat label="Chamados" value={waiting.filter(r=>r.chamado).length} color={C.orange}/>
+    </div>
+
+    {!loaded && <div style={{...card,textAlign:"center",color:C.faint,padding:24,fontSize:13}}>Carregando…</div>}
+    {loaded && totalWaiting===0 && <div style={{...card,textAlign:"center",color:C.faint,padding:26,fontSize:14}}>Ninguém no pátio aguardando chamada agora.</div>}
+
+    {loaded && freedShown.length>0 && <div style={{marginBottom:14}}>
+      <div style={{fontSize:12,fontWeight:800,color:C.orange,textTransform:"uppercase",letterSpacing:.3,margin:"0 2px 8px"}}>🅿️ Vaga livre — chamar próxima onda</div>
+      {freedShown.map(f=>(
+        <div key={f.cycle+"|"+f.vaga} style={{...card,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12,borderLeft:`5px solid ${f.called?C.green:C.orange}`,background:f.called?"#f4fff8":"#fffaf4"}}>
+          <span style={{minWidth:56,textAlign:"center",background:C.orange,color:"#fff",borderRadius:9,padding:"9px 4px",fontWeight:800,fontSize:17,lineHeight:1}}>{f.vaga}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:13.5}}>Vaga {f.vaga} vazia · próxima é a Onda {f.onda||"?"}</div>
+            <div style={{fontSize:12,color:C.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.driver.name} · {f.driver.carrier}</div>
+            {f.called && <div style={{fontSize:11,color:C.green,fontWeight:700,marginTop:2}}>✅ já chamado às {t2hm(f.driver.chamado)}</div>}
+          </div>
+          <button onClick={()=>callNext(f.driver)} style={{display:"flex",alignItems:"center",gap:6,border:"none",borderRadius:10,padding:"11px 15px",background:f.called?C.green:C.orange,color:"#fff",fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>🔔 {f.called?"Chamar de novo":"Chamar"}</button>
+        </div>
+      ))}
+    </div>}
+
+    {loaded && ondaKeys.map(key=>{ const list=groups[key]; const isOpen=!!open[key]; const chamados=list.filter(r=>r.chamado).length; const label=key==="sem"?"Sem onda":("Onda "+key);
+      return (<div key={key} style={{...card,padding:0,marginBottom:10,overflow:"hidden",borderLeft:`5px solid ${chamados===list.length?C.green:C.blue}`}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 14px"}}>
+          <button onClick={()=>setOpen(o=>({...o,[key]:!o[key]}))} style={{flex:1,display:"flex",alignItems:"center",gap:10,border:"none",background:"none",cursor:"pointer",padding:0,textAlign:"left"}}>
+            <span style={{fontSize:14,color:C.dim,width:14}}>{isOpen?"▾":"▸"}</span>
+            <span style={{fontWeight:800,fontSize:16}}>{label}</span>
+            <span style={{background:C.blue,color:"#fff",borderRadius:12,padding:"2px 10px",fontWeight:800,fontSize:12.5}}>{list.length}</span>
+            {chamados>0 && <span style={{background:"#eafff1",color:C.green,border:`1px solid ${C.green}`,borderRadius:12,padding:"1px 8px",fontWeight:800,fontSize:11}}>{chamados} chamado(s)</span>}
+          </button>
+          <button onClick={()=>chamarOnda(key,list)} style={{display:"flex",alignItems:"center",gap:7,border:"none",borderRadius:10,padding:"11px 15px",background:C.green,color:"#fff",fontWeight:800,fontSize:13.5,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 2px 6px rgba(0,166,80,.3)"}}>{bell()} Chamar onda</button>
+        </div>
+        {isOpen && <div style={{padding:"0 12px 12px"}}>
+          {list.map(r=>{ const cm=cyMeta(r.cycle); const isFlash=!!flash[r.id]; const wasCalled=!!r.chamado;
+            return (<div key={r.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 10px",marginTop:8,borderRadius:10,background:isFlash?"#eafff1":"#fafafa",border:`1px solid ${isFlash?C.green:"#eee"}`,transition:"background .4s"}}>
+              <span style={{minWidth:52,textAlign:"center",background:r.vaga?C.blue:"#e5e5e5",color:r.vaga?"#fff":C.faint,borderRadius:8,padding:"8px 4px",fontWeight:800,fontSize:16,lineHeight:1}}>{r.vaga||"—"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontWeight:800,fontSize:13.5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</span><span style={{fontSize:9.5,fontWeight:800,color:"#fff",background:cm.color,borderRadius:4,padding:"1px 5px"}}>{r.cycle||"—"}</span></div>
+                <div style={{fontSize:11.5,color:C.dim,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.carrier} · Gaiola {r.route}</div>
+                {wasCalled && <div style={{fontSize:11,color:C.green,fontWeight:700,marginTop:2}}>✅ chamado às {t2hm(r.chamado)}</div>}
+              </div>
+              <button onClick={()=>chamar([r])} style={{display:"flex",alignItems:"center",gap:5,border:`1.5px solid ${wasCalled?C.green:C.blue}`,borderRadius:9,padding:"9px 12px",background:wasCalled?"#eafff1":"#fff",color:wasCalled?C.green:C.blue,fontWeight:800,fontSize:12.5,cursor:"pointer",whiteSpace:"nowrap"}}>{bell()} {wasCalled?"Chamar de novo":"Chamar"}</button>
+            </div>);
+          })}
+        </div>}
+      </div>);
+    })}
+
+    <div style={{textAlign:"center",marginTop:10}}><button onClick={()=>fbOnline()} style={linkBtn}>↻ Atualizar</button></div>
+  </div>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
